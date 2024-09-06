@@ -10,8 +10,6 @@ The following NewNote terminals are supported:
 - SP630 Pro 4G Wi-Fi
 - SP880 CounterTop
 
-This project enables SmartDigit to interact with these terminals using Ethernet or Wi-Fi.
-
 ## Features
 
 - **Terminal Status Requests**: Query the current status of the terminal.
