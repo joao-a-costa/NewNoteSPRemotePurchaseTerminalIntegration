@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("NewNoteSPRemotePurchaseTerminalIntegration")]
+[assembly: AssemblyTitle("NewNoteSPRemotePurchaseTerminalIntegration.Console")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("NewNoteSPRemotePurchaseTerminalIntegration")]
+[assembly: AssemblyProduct("NewNoteSPRemotePurchaseTerminalIntegration.Console")]
 [assembly: AssemblyCopyright("Copyright ©  2024")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace NewNoteSPRemotePurchaseTerminalIntegration
+namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 {
     public class Enums
     {
