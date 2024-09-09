@@ -1,4 +1,4 @@
-﻿namespace NewNoteSPRemotePurchaseTerminalIntegration.Models
+﻿namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
 {
     internal class OpenPeriod
     {
