@@ -29,8 +29,11 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Sends the command to the server.
         /// </summary>
         /// <param name="command">The command to send.</param>
-        public void SendCommand(string command)
+        public Result SendCommand(string command)
         {
+            var success = false;
+            var message = string.Empty;
+
             using (var client = new TcpClient(serverIp, port))
             {
                 using (var stream = client.GetStream())
@@ -46,31 +49,35 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                         int bytesRead;
                         while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
                             ms.Write(buffer, 0, bytesRead);
-                        var responseData = Encoding.Default.GetString(ms.ToArray()).Substring(2);
-                        Console.WriteLine($"Received: {responseData}");
+                        message = Encoding.Default.GetString(ms.ToArray()).Substring(2);
+                        Console.WriteLine($"Received: {message}");
                     }
                 }
             }
+
+            success = true;
+
+            return new Result { Success = success, Message = message };
         }
 
         /// <summary>
         /// Terminal status.
         /// </summary>
-        public void TerminalStatus() =>
+        public Result TerminalStatus() =>
             SendCommand(new TerminalStatus().ToString());
 
         /// <summary>
         /// Opens the period.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
-        public void OpenPeriod(string transactionId) =>
+        public Result OpenPeriod(string transactionId) =>
             SendCommand(new OpenPeriod { TransactionId = transactionId }.ToString());
 
         /// <summary>
         /// Closes the period.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
-        public void ClosePeriod(string transactionId) =>
+        public Result ClosePeriod(string transactionId) =>
             SendCommand(new ClosePeriod { TransactionId = transactionId }.ToString());
 
         /// <summary>
@@ -78,7 +85,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
         /// <param name="amount">The amount.</param>
-        public void Purchase(string transactionId, string amount) =>
+        public Result Purchase(string transactionId, string amount) =>
             SendCommand(new Purchase { TransactionId = transactionId, Amount = amount }.ToString());
 
         /// <summary>
@@ -86,7 +93,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
         /// <param name="amount">The amount.</param>
-        public void Refund(string transactionId, string amount) =>
+        public Result Refund(string transactionId, string amount) =>
             SendCommand(new Refund { TransactionId = transactionId, Amount = amount }.ToString());
     }
 }

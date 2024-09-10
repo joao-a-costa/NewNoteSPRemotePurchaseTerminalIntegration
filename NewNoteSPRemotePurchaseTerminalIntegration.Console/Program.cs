@@ -18,15 +18,15 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
 
         #region "Home"
 
-        //private static readonly string serverIp = "192.168.1.252";
-        //private static readonly int port = 15200;
+        private static readonly string serverIp = "192.168.1.252";
+        private static readonly int port = 15200;
 
         #endregion
 
         #region "Office"
 
-        private static readonly string serverIp = "195.138.11.17";
-        private static readonly int port = 10301;
+        //private static readonly string serverIp = "195.138.11.17";
+        //private static readonly int port = 10301;
 
         #endregion
 
@@ -46,9 +46,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
             }
             System.Console.WriteLine("Press any key to exit...");
             System.Console.ReadKey();
-        }
-
-        
+        }        
 
         #region "Private Methods"
 
