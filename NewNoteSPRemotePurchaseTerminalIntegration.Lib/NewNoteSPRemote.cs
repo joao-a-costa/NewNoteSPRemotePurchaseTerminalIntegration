@@ -8,6 +8,20 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 {
     public class NewNoteSPRemote
     {
+        #region "Constants"
+
+        private const string _infoSent = "Sent";
+        private const string _infoReceived = "Received";
+
+        private const string _okTerminalStatus = "INIT OK";
+        private const string _okOpenPeriod = "PERÍODO ABERTO";
+        private const string _okClosePeriod = "PERÍODO FECHADO";
+        private const string _okPurchase = "PAGAM. EFECTUADO";
+        private const string _okRefund = "OK";
+
+
+        #endregion
+
         #region "Members"
 
         private readonly string serverIp;
@@ -29,9 +43,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Sends the command to the server.
         /// </summary>
         /// <param name="command">The command to send.</param>
-        public Result SendCommand(string command)
+        public string SendCommand(string command)
         {
-            var success = false;
             var message = string.Empty;
 
             using (var client = new TcpClient(serverIp, port))
@@ -41,7 +54,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                     var hexCommand = Utilities.CalculateHexLength(command);
                     stream.Write(hexCommand, 0, hexCommand.Length);
                     var stringCommand = Encoding.ASCII.GetBytes(command);
-                    Console.WriteLine($"Sent: {command}");
+                    Console.WriteLine($"{_infoSent}: {command}");
                     stream.Write(stringCommand, 0, stringCommand.Length);
                     var buffer = new byte[1024];
                     using (var ms = new MemoryStream())
@@ -50,50 +63,68 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                         while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
                             ms.Write(buffer, 0, bytesRead);
                         message = Encoding.Default.GetString(ms.ToArray()).Substring(2);
-                        Console.WriteLine($"Received: {message}");
+                        Console.WriteLine($"{_infoReceived}: {message}");
                     }
                 }
             }
 
-            success = true;
-
-            return new Result { Success = success, Message = message };
+            return message;
         }
 
         /// <summary>
         /// Terminal status.
         /// </summary>
-        public Result TerminalStatus() =>
-            SendCommand(new TerminalStatus().ToString());
+        public Result TerminalStatus()
+        {
+            var message = SendCommand(new TerminalStatus().ToString());
+
+            return new Result { Success = message.Substring(9).StartsWith(_okTerminalStatus), Message = message };
+        }
 
         /// <summary>
         /// Opens the period.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
-        public Result OpenPeriod(string transactionId) =>
-            SendCommand(new OpenPeriod { TransactionId = transactionId }.ToString());
+        public Result OpenPeriod(string transactionId)
+        {
+            var message = SendCommand(new OpenPeriod { TransactionId = transactionId }.ToString());
+
+            return new Result { Success = message.Substring(10).StartsWith(_okOpenPeriod), Message = message };
+        }
 
         /// <summary>
         /// Closes the period.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
-        public Result ClosePeriod(string transactionId) =>
-            SendCommand(new ClosePeriod { TransactionId = transactionId }.ToString());
+        public Result ClosePeriod(string transactionId)
+        {
+            var message = SendCommand(new ClosePeriod { TransactionId = transactionId }.ToString());
+
+            return new Result { Success = message.Substring(9).StartsWith(_okClosePeriod), Message = message };
+        }
 
         /// <summary>
         /// Purchases the specified transaction identifier and amount.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
         /// <param name="amount">The amount.</param>
-        public Result Purchase(string transactionId, string amount) =>
-            SendCommand(new Purchase { TransactionId = transactionId, Amount = amount }.ToString());
+        public Result Purchase(string transactionId, string amount)
+        {
+            var message  = SendCommand(new Purchase { TransactionId = transactionId, Amount = amount }.ToString());
+
+            return new Result { Success = message.Substring(9).StartsWith(_okPurchase), Message = message };
+        }
 
         /// <summary>
         /// The refund.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
         /// <param name="amount">The amount.</param>
-        public Result Refund(string transactionId, string amount) =>
-            SendCommand(new Refund { TransactionId = transactionId, Amount = amount }.ToString());
+        public Result Refund(string transactionId, string amount)
+        {
+            var message = SendCommand(new Refund { TransactionId = transactionId, Amount = amount }.ToString());
+
+            return new Result { Success = message == _okRefund, Message = message };
+        }
     }
 }

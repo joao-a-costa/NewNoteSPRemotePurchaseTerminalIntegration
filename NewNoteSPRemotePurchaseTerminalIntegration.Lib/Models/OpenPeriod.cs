@@ -8,7 +8,7 @@
 
         override public string ToString()
         {
-           return $"{_commandOpenPeriod.Replace("TRANSACTIONID", TransactionId.PadLeft(4, '0'))}";
+           return $"{_commandOpenPeriod.Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0'))}";
         }
     }
 }

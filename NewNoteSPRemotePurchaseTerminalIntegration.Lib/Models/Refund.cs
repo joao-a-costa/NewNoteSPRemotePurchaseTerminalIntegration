@@ -9,7 +9,7 @@
 
         override public string ToString()
         {
-           return $"{_commandRefund.Replace("TRANSACTIONID", TransactionId.PadLeft(4, '0')).Replace("AMOUNT", Amount.PadLeft(8, '0'))}";
+           return $"{_commandRefund.Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0')).Replace("#AMOUNT#", Amount.PadLeft(8, '0'))}";
         }
     }
 }
