@@ -17,13 +17,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
             return _commandRefund
                 .Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0'))
                 .Replace("#AMOUNT#", Amount.PadLeft(8, '0'))
-                .Replace("#ORIGINALPOSIDENTIFICATION#", Amount.PadLeft(8, '0'))
+                .Replace("#ORIGINALPOSIDENTIFICATION#", OriginalPosIdentification.PadLeft(8, '0'))
                 .Replace("#ORIGINALRECEIPTDATA#",
                     OriginalReceiptData.Year.ToString().PadLeft(4, '0') +
                     OriginalReceiptData.Month.ToString().PadLeft(2, '0') +
                     OriginalReceiptData.Day.ToString().PadLeft(2, '0'))
                 .Replace("#ORIGINALRECEIPTTIME#",
-                    OriginalReceiptTime.Hour.ToString().PadLeft(4, '0') +
+                    OriginalReceiptTime.Hour.ToString().PadLeft(2, '0') +
                     OriginalReceiptTime.Minute.ToString().PadLeft(2, '0') +
                     OriginalReceiptTime.Second.ToString().PadLeft(2, '0'));
         }

@@ -21,8 +21,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _okPurchase = "PAGAM. EFECTUADO";
         private const string _okRefund = "DEVOL. EFECTUADA";
 
-        private const string _patternIdentTpa = @"Ident\. TPA:\s*(\d+)(\d{4}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
-        private const string _dateTimeFormat = "yyyy-MM-dd HH:mm:ss";
+        private const string _patternIdentTpa = @"Ident\. TPA:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
+        private const string _dateTimeFormat = "yy-MM-dd HH:mm:ss";
 
         #endregion
 
