@@ -137,6 +137,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                     );
 
                     purchaseResult.OriginalReceiptData = originalReceiptData;
+                    purchaseResult.ReceiptData = message.Substring(29);
                 }
             }
 
