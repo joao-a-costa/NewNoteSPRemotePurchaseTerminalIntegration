@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models;
 
 namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
@@ -17,8 +19,10 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _okOpenPeriod = "PERÍODO ABERTO";
         private const string _okClosePeriod = "PERÍODO FECHADO";
         private const string _okPurchase = "PAGAM. EFECTUADO";
-        private const string _okRefund = "OK";
+        private const string _okRefund = "DEVOL. EFECTUADA";
 
+        private const string _patternIdentTpa = @"Ident\. TPA:\s*(\d+)(\d{4}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
+        private const string _dateTimeFormat = "yyyy-MM-dd HH:mm:ss";
 
         #endregion
 
@@ -110,9 +114,37 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// <param name="amount">The amount.</param>
         public Result Purchase(string transactionId, string amount)
         {
+            var purchaseResult = new PurchaseResult();
             var message  = SendCommand(new Purchase { TransactionId = transactionId, Amount = amount }.ToString());
 
-            return new Result { Success = message.Substring(9).StartsWith(_okPurchase), Message = message };
+            if (message.Substring(9).StartsWith(_okPurchase))
+            {                
+                purchaseResult.TransactionId = transactionId;
+                purchaseResult.Amount = amount;
+
+                // Match Ident. TPA for terminal ID, date, and time:
+                var matchIdentTpa = Regex.Match(message, _patternIdentTpa);
+                if (matchIdentTpa.Success)
+                {
+                    purchaseResult.OriginalPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                    DateTime.TryParseExact(
+                        matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                        _dateTimeFormat,
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.None,
+                        out DateTime originalReceiptData
+                    );
+
+                    purchaseResult.OriginalReceiptData = originalReceiptData;
+                }
+            }
+
+            return new Result {
+                Success = message.Substring(9).StartsWith(_okPurchase),
+                Message = message,
+                ExtraData = purchaseResult
+            };
         }
 
         /// <summary>
@@ -120,11 +152,17 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
         /// <param name="amount">The amount.</param>
-        public Result Refund(string transactionId, string amount)
+        public Result Refund(PurchaseResult purchaseResult)
         {
-            var message = SendCommand(new Refund { TransactionId = transactionId, Amount = amount }.ToString());
+            var message = SendCommand(new Refund {
+                TransactionId = purchaseResult.TransactionId,
+                Amount = purchaseResult.Amount,
+                OriginalPosIdentification = purchaseResult.OriginalPosIdentification,
+                OriginalReceiptData = purchaseResult.OriginalReceiptData,
+                OriginalReceiptTime = purchaseResult.OriginalReceiptData
+            }.ToString());
 
-            return new Result { Success = message == _okRefund, Message = message };
+            return new Result { Success = message.Substring(9).StartsWith(_okRefund), Message = message };
         }
     }
 }
