@@ -81,7 +81,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
                             newNoteSPRemote.Purchase("0001", "00000009");
                             break;
                         case TerminalCommandOptions.SendProcessRefundRequest:
-                            newNoteSPRemote.Refund("0001", "00000009");
+                            newNoteSPRemote.Refund(new Lib.Models.PurchaseResult());
                             break;
                         case TerminalCommandOptions.ShowListOfCommands:
                             ShowListOfCommands();
