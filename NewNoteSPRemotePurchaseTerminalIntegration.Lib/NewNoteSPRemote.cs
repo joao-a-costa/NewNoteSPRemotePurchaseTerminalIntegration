@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models;
+using static NewNoteSPRemotePurchaseTerminalIntegration.Lib.Enums;
 
 namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 {
@@ -14,6 +15,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
         private const string _infoSent = "Sent";
         private const string _infoReceived = "Received";
+        private const string _infoUnknownError = "Erro no processamento. Consulte o terminal para mais detalhes";
 
         private const string _okTerminalStatus = "INIT OK";
         private const string _okOpenPeriod = "PERÍODO ABERTO";
@@ -141,11 +143,15 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 }
             }
 
-            return new Result {
+            var result = new Result
+            {
                 Success = message.Substring(9).StartsWith(_okPurchase),
-                Message = message,
                 ExtraData = purchaseResult
             };
+
+            result.Message = result.Success ? message : ParseErrorResponse(message);
+
+            return result;
         }
 
         /// <summary>
@@ -163,7 +169,48 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 OriginalReceiptTime = purchaseResult.OriginalReceiptData
             }.ToString());
 
-            return new Result { Success = message.Substring(9).StartsWith(_okRefund), Message = message };
+            var result = new Result
+            {
+                Success = message.Substring(9).StartsWith(_okRefund),
+                ExtraData = purchaseResult
+            };
+
+            result.Message = result.Success ? message : ParseErrorResponse(message);
+
+            return result;
         }
+
+        /// <summary>
+        /// Parses the error response.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <returns>The error response.</returns>
+        private static string ParseErrorResponse(string message)
+        {
+            var response = message.Substring(6, 3);
+
+            if (int.TryParse(response, out int intValue))
+            {
+                var enumValue = (NewNoteNegativeResponses)intValue;
+                var fieldInfo = enumValue.GetType().GetField(enumValue.ToString());
+                if (fieldInfo != null)
+                {
+                    var descriptionAttributes = (System.ComponentModel.DescriptionAttribute[])fieldInfo
+                    .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false);
+
+                    if (descriptionAttributes.Length > 0)
+                    {
+                        return descriptionAttributes[0].Description;
+                    }
+                }
+                else
+                {
+                    return _infoUnknownError;
+                }
+            }
+
+            return _infoUnknownError;
+        }
+
     }
 }

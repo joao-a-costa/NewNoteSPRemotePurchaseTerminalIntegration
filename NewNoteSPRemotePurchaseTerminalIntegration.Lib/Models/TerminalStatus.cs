@@ -2,7 +2,7 @@
 {
     internal class TerminalStatus
     {
-        private const string _commandTerminalStatus = "M00110G1";
+        private const string _commandTerminalStatus = "M00110PZ";
 
         override public string ToString()
         {
