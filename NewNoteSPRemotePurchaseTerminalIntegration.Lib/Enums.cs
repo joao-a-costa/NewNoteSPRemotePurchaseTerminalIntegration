@@ -21,5 +21,27 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             [Description("Stop listening")]
             StopTheServer = 9999
         }
+
+        public enum NewNoteNegativeResponses
+        {
+            [Description("Comprimento Inválido")]
+            COMPRIMINVALIDO = 001,
+            [Description("COMANDO INVÁLIDO")]
+            COMANDOINVALIDO = 002,
+            [Description("VERSÃO INVALIDA")]
+            VERSÃOINVALIDA = 003,
+            [Description("FORA DE CONTEXTO")]
+            FORADECONTEXTO = 004,
+            [Description("OPERAÇÃO ANULADA")]
+            OPERACAOANULADA = 005,
+            [Description("FORA DE SERVIÇO")]
+            FORADESERVICO = 006,
+            [Description("MATRICULAR TPA")]
+            MATRICULARTPA = 007,
+            [Description("MODELO ECR INV.")]
+            MODELOECRINV = 008,
+            [Description("ERRO")]
+            ERRO = 012,
+        }
     }
 }
