@@ -1,15 +1,18 @@
-﻿namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
+﻿using System;
+
+namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
 {
     internal class Purchase
     {
-        private const string _commandPurchase = "C00010#TRANSACTIONID##AMOUNT#00000000";
+        private const string _commandPurchase = "C00010#TRANSACTIONID##AMOUNT#0000#PRINTRECEIPTONPOS#000";
 
         public string TransactionId { get; set; }
         public string Amount { get; set; }
+        public bool PrintReceiptOnPOS { get; set; } = true;
 
         override public string ToString()
         {
-           return $"{_commandPurchase.Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0')).Replace("#AMOUNT#", Amount.PadLeft(8, '0'))}";
+           return $"{_commandPurchase.Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0')).Replace("#AMOUNT#", Amount.PadLeft(8, '0')).Replace("#PRINTRECEIPTONPOS#", Convert.ToByte(PrintReceiptOnPOS).ToString())}";
         }
     }
 }

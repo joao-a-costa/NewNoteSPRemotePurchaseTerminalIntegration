@@ -78,7 +78,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
                             newNoteSPRemote.ClosePeriod("0001");
                             break;
                         case TerminalCommandOptions.SendProcessPaymentRequest:
-                            newNoteSPRemote.Purchase("0001", "00000009");
+                            newNoteSPRemote.Purchase("0001", "00000360", DateTime.Now);
                             break;
                         case TerminalCommandOptions.SendProcessRefundRequest:
                             newNoteSPRemote.Refund(new Lib.Models.PurchaseResult());
