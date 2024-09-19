@@ -20,7 +20,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _okTerminalStatus = "INIT OK";
         private const string _okOpenPeriod = "PERÍODO ABERTO";
         private const string _okClosePeriod = "PERÍODO FECHADO";
-        private const string _okPurchase = "PAGAM. EFECTUADO";
+        private const string _okPurchase = "000";
         private const string _okRefund = "DEVOL. EFECTUADA";
 
         private const string _patternIdentTpa = @"Ident\. TPA:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
@@ -34,6 +34,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private readonly int port;
 
         #endregion
+
+        public string OriginalPosIdentification { get; private set; }
 
         #region "Constructors"
 
@@ -83,8 +85,10 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         public Result TerminalStatus()
         {
             var message = SendCommand(new TerminalStatus().ToString());
+            var success = message.Substring(9).StartsWith(_okTerminalStatus);
+            var originalPosIdentification = success ? message.Substring(26) : string.Empty;
 
-            return new Result { Success = message.Substring(9).StartsWith(_okTerminalStatus), Message = message };
+            return new Result { Success = success, Message = message, ExtraData = originalPosIdentification };
         }
 
         /// <summary>
@@ -114,12 +118,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
         /// <param name="amount">The amount.</param>
-        public Result Purchase(string transactionId, string amount)
+        public Result Purchase(string transactionId, string amount, DateTime originalReceiptData,  bool printReceiptOnPOS = true, string originalPosIdentification = "")
         {
             var purchaseResult = new PurchaseResult();
-            var message  = SendCommand(new Purchase { TransactionId = transactionId, Amount = amount }.ToString());
+            var message  = SendCommand(new Purchase { TransactionId = transactionId, Amount = amount, PrintReceiptOnPOS = printReceiptOnPOS }.ToString());
+            var success = message.Substring(6, 3).Equals(_okPurchase);
 
-            if (message.Substring(9).StartsWith(_okPurchase))
+            if (success)
             {                
                 purchaseResult.TransactionId = transactionId;
                 purchaseResult.Amount = amount;
@@ -135,17 +140,23 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                         _dateTimeFormat,
                         CultureInfo.InvariantCulture,
                         DateTimeStyles.None,
-                        out DateTime originalReceiptData
+                        out DateTime originalReceiptDataParsed
                     );
 
-                    purchaseResult.OriginalReceiptData = originalReceiptData;
+                    purchaseResult.OriginalReceiptData = originalReceiptDataParsed;
                     purchaseResult.ReceiptData = message.Substring(29);
+                }
+                else
+                {
+                    // Receipt is being printed on the terminal
+                    purchaseResult.OriginalPosIdentification = originalPosIdentification;
+                    purchaseResult.OriginalReceiptData = originalReceiptData;
                 }
             }
 
             var result = new Result
             {
-                Success = message.Substring(9).StartsWith(_okPurchase),
+                Success = success,
                 ExtraData = purchaseResult
             };
 

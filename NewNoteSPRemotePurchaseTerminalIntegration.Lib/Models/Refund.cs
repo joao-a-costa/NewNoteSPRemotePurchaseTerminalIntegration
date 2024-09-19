@@ -17,7 +17,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
             return _commandRefund
                 .Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0'))
                 .Replace("#AMOUNT#", Amount.PadLeft(8, '0'))
-                .Replace("#ORIGINALPOSIDENTIFICATION#", OriginalPosIdentification.PadLeft(8, '0'))
+                .Replace("#ORIGINALPOSIDENTIFICATION#", OriginalPosIdentification?.PadLeft(8, '0'))
                 .Replace("#ORIGINALRECEIPTDATA#",
                     OriginalReceiptData.Year.ToString().PadLeft(4, '0') +
                     OriginalReceiptData.Month.ToString().PadLeft(2, '0') +
