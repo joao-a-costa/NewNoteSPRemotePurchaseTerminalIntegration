@@ -35,7 +35,20 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
         #endregion
 
-        public string OriginalPosIdentification { get; private set; }
+        #region "Properties"
+
+        public string OriginalPosIdentification { get; }
+
+        #endregion
+
+        #region "Events"
+
+        /// <summary>
+        /// Define an event to be raised when a message is sent
+        /// </summary>
+        public event EventHandler<string> MessageSent;
+
+        #endregion
 
         #region "Constructors"
 
@@ -54,6 +67,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         public string SendCommand(string command)
         {
             var message = string.Empty;
+
+            MessageSent?.Invoke(this, command);
 
             using (var client = new TcpClient(serverIp, port))
             {
@@ -118,6 +133,9 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
         /// <param name="amount">The amount.</param>
+        /// <param name="originalPosIdentification">The original POS identification.</param>
+        /// <param name="printReceiptOnPOS">if set to <c>true</c> [print receipt on POS].</param>
+        /// <param name="originalReceiptData">The original receipt data.</param>
         public Result Purchase(string transactionId, string amount, DateTime originalReceiptData,  bool printReceiptOnPOS = true, string originalPosIdentification = "")
         {
             var purchaseResult = new PurchaseResult();
