@@ -16,19 +16,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
 
         #region "Members"
 
-        #region "Home"
-
-        private static readonly string serverIp = "192.168.1.252";
+        private static readonly string serverIp = "192.168.40.175";
         private static readonly int port = 15200;
-
-        #endregion
-
-        #region "Office"
-
-        //private static readonly string serverIp = "195.138.11.17";
-        //private static readonly int port = 10301;
-
-        #endregion
 
         private static readonly NewNoteSPRemote newNoteSPRemote = new NewNoteSPRemote(serverIp, port);
 
