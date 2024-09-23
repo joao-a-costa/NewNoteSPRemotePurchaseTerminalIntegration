@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -13,7 +14,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
     {
         #region "Constants"
 
-        private const string _infoSent = "Sent";
         private const string _infoReceived = "Received";
         private const string _infoUnknownError = "Erro no processamento. Consulte o terminal para mais detalhes";
 
@@ -30,6 +30,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _patternReceiptOnPOSDate = @"(\d{8})";
         private const string _patternReceiptOnPOSTime = @"(\d{6})";
         private const string _dateTimeFormatOnPOS = "yyyyMMdd HHmmss";
+
+        private const string _purchaseTags = "0B9F1C009A009F21009F4100";
 
 
         #endregion
@@ -70,7 +72,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Sends the command to the server.
         /// </summary>
         /// <param name="command">The command to send.</param>
-        public string SendCommand(string command)
+        public string SendCommand(string command, string tags = "")
         {
             var message = string.Empty;
 
@@ -80,12 +82,17 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             {
                 using (var stream = client.GetStream())
                 {
-                    var hexCommand = Utilities.CalculateHexLength(command);
-                    stream.Write(hexCommand, 0, hexCommand.Length);
+                    var hexCommand1 = Utilities.ConvertHexStringToByteArray(string.Concat(Utilities.CalculateHexLength(command).Select(b => b.ToString("D2"))));
+                    stream.Write(hexCommand1, 0, hexCommand1.Length);
 
                     var stringCommand = Encoding.ASCII.GetBytes(command);
-                    Console.WriteLine($"{_infoSent}: {command}");
                     stream.Write(stringCommand, 0, stringCommand.Length);
+
+                    if (!string.IsNullOrEmpty(tags))
+                    {
+                        var hexCommandLast = Utilities.ConvertHexStringToByteArray(tags);
+                        stream.Write(hexCommandLast, 0, hexCommandLast.Length);
+                    }
 
                     var buffer = new byte[1024];
                     using (var ms = new MemoryStream())
@@ -144,10 +151,12 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// <param name="originalPosIdentification">The original POS identification.</param>
         /// <param name="printReceiptOnPOS">if set to <c>true</c> [print receipt on POS].</param>
         /// <param name="originalReceiptData">The original receipt data.</param>
-        public Result Purchase(string transactionId, string amount, DateTime originalReceiptData,  bool printReceiptOnPOS = true, string originalPosIdentification = "")
+        public Result Purchase(string transactionId, string amount, bool printReceiptOnPOS = true)
         {
             var purchaseResult = new PurchaseResult();
-            var message  = SendCommand(new Purchase { TransactionId = transactionId, Amount = amount, PrintReceiptOnPOS = printReceiptOnPOS }.ToString());
+            var message  = SendCommand(new Purchase { TransactionId = transactionId, Amount = amount,
+                PrintReceiptOnPOS = printReceiptOnPOS }.ToString(),
+                _purchaseTags);
             var success = message.Substring(6, 3).Equals(_okPurchase);
 
             if (success)

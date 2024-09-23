@@ -16,8 +16,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
 
         #region "Members"
 
-        private static readonly string serverIp = "192.168.40.175";
-        //private static readonly string serverIp = "192.168.1.252";
+        //private static readonly string serverIp = "192.168.40.175";
+        private static readonly string serverIp = "192.168.1.252";
         private static readonly int port = 15200;
 
         private static readonly NewNoteSPRemote newNoteSPRemote = new NewNoteSPRemote(serverIp, port);
@@ -68,7 +68,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
                             newNoteSPRemote.ClosePeriod("0001");
                             break;
                         case TerminalCommandOptions.SendProcessPaymentRequest:
-                            newNoteSPRemote.Purchase("0001", Convert.ToInt32((Math.Round(new Random().NextDouble() * (1.99 - 0.01) + 0.01, 2)) * 100).ToString().PadLeft(8, '0'), DateTime.Now);
+                            newNoteSPRemote.Purchase("0001", Convert.ToInt32((Math.Round(new Random().NextDouble() * (1.99 - 0.01) + 0.01, 2)) * 100).ToString().PadLeft(8, '0'),
+                                false);
                             break;
                         case TerminalCommandOptions.SendProcessRefundRequest:
                             newNoteSPRemote.Refund(new Lib.Models.PurchaseResult());
