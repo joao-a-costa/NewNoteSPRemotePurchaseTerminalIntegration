@@ -8,11 +8,16 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
 
         public string TransactionId { get; set; }
         public string Amount { get; set; }
-        public bool PrintReceiptOnPOS { get; set; } = true;
+        public bool PrintReceiptOnPOS { get; set; } = false;
 
         override public string ToString()
         {
-           return $"{_commandPurchase.Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0')).Replace("#AMOUNT#", Amount.PadLeft(8, '0')).Replace("#PRINTRECEIPTONPOS#", Convert.ToByte(PrintReceiptOnPOS).ToString())}";
+            string command = _commandPurchase
+                .Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0'))
+                .Replace("#AMOUNT#", Amount.PadLeft(8, '0'))
+                .Replace("#PRINTRECEIPTONPOS#", Convert.ToByte(PrintReceiptOnPOS).ToString());
+
+            return command;
         }
     }
 }
