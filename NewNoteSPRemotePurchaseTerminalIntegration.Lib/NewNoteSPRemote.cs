@@ -23,8 +23,14 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _okPurchase = "000";
         private const string _okRefund = "DEVOL. EFECTUADA";
 
-        private const string _patternIdentTpa = @"Ident\. TPA:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
-        private const string _dateTimeFormat = "yy-MM-dd HH:mm:ss";
+        private const string _patternReceiptOnECRTerminalIDAndDate = @"Ident\. TPA:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
+        private const string _dateTimeFormatOnECR = "yy-MM-dd HH:mm:ss";
+
+        private const string _patternReceiptOnPOSTerminalID = @"[\u001c\b](\d{8})";
+        private const string _patternReceiptOnPOSDate = @"(\d{8})";
+        private const string _patternReceiptOnPOSTime = @"(\d{6})";
+        private const string _dateTimeFormatOnPOS = "yyyyMMdd HHmmss";
+
 
         #endregion
 
@@ -76,9 +82,11 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 {
                     var hexCommand = Utilities.CalculateHexLength(command);
                     stream.Write(hexCommand, 0, hexCommand.Length);
+
                     var stringCommand = Encoding.ASCII.GetBytes(command);
                     Console.WriteLine($"{_infoSent}: {command}");
                     stream.Write(stringCommand, 0, stringCommand.Length);
+
                     var buffer = new byte[1024];
                     using (var ms = new MemoryStream())
                     {
@@ -143,33 +151,69 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             var success = message.Substring(6, 3).Equals(_okPurchase);
 
             if (success)
-            {                
+            {
+                var receiptPosIdentification = string.Empty;
+                var receiptDataParsed = DateTime.Now;
+                var receiptData = string.Empty;
+
                 purchaseResult.TransactionId = transactionId;
                 purchaseResult.Amount = amount;
 
-                // Match Ident. TPA for terminal ID, date, and time:
-                var matchIdentTpa = Regex.Match(message, _patternIdentTpa);
-                if (matchIdentTpa.Success)
+                if (!printReceiptOnPOS)
                 {
-                    purchaseResult.OriginalPosIdentification = matchIdentTpa.Groups[1].Value;
+                    // Match Ident. TPA for terminal ID, date, and time:
+                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate);
+                    if (matchIdentTpa.Success)
+                    {
+                        DateTime.TryParseExact(
+                            matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                            _dateTimeFormatOnECR,
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out receiptDataParsed
+                        );
 
-                    DateTime.TryParseExact(
-                        matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
-                        _dateTimeFormat,
-                        CultureInfo.InvariantCulture,
-                        DateTimeStyles.None,
-                        out DateTime originalReceiptDataParsed
-                    );
-
-                    purchaseResult.OriginalReceiptData = originalReceiptDataParsed;
-                    purchaseResult.ReceiptData = message.Substring(29);
+                        receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+                        receiptData = message.Substring(29);
+                    }
                 }
                 else
                 {
-                    // Receipt is being printed on the terminal
-                    purchaseResult.OriginalPosIdentification = originalPosIdentification;
-                    purchaseResult.OriginalReceiptData = originalReceiptData;
+                    // Define regex patterns for terminal ID, date, and time
+                    string terminalIdPattern = _patternReceiptOnPOSTerminalID;  // Matches 8 digits after a specific control character
+                    string datePattern = _patternReceiptOnPOSDate;  // Matches 8 digits (YYYYMMDD) for date
+                    string timePattern = _patternReceiptOnPOSTime;  // Matches 6 digits (HHMMSS) for time
+
+                    // Find matches for terminal ID, date, and time
+                    Match terminalIdMatch = Regex.Match(message, terminalIdPattern);
+
+                    if (terminalIdMatch.Success)
+                    {
+                        receiptPosIdentification = terminalIdMatch.Groups[1].Value;
+
+                        Match dateMatch = Regex.Match(message.Substring(terminalIdMatch.Index + terminalIdMatch.Length), datePattern);
+
+                        if (dateMatch.Success)
+                        {
+                            Match timeMatch = Regex.Match(message.Substring(terminalIdMatch.Index + terminalIdMatch.Length + dateMatch.Index + dateMatch.Length), timePattern);
+
+                            if (timeMatch.Success)
+                            {
+                                DateTime.TryParseExact(
+                                    dateMatch.Groups[1].Value + " " + timeMatch.Groups[1].Value,
+                                    _dateTimeFormatOnPOS,
+                                    CultureInfo.InvariantCulture,
+                                    DateTimeStyles.None,
+                                    out receiptDataParsed
+                                );
+                            }
+                        }
+                    }
                 }
+
+                purchaseResult.OriginalPosIdentification = receiptPosIdentification;
+                purchaseResult.OriginalReceiptData = receiptDataParsed;
+                purchaseResult.ReceiptData = receiptData;
             }
 
             var result = new Result
