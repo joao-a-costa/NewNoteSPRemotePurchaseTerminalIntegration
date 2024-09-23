@@ -82,8 +82,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             {
                 using (var stream = client.GetStream())
                 {
-                    var hexCommand1 = Utilities.ConvertHexStringToByteArray(string.Concat(Utilities.CalculateHexLength(command).Select(b => b.ToString("D2"))));
-                    stream.Write(hexCommand1, 0, hexCommand1.Length);
+                    byte[] hexCommand = null;
+
+                    if (string.IsNullOrEmpty(tags))
+                        hexCommand = Utilities.CalculateHexLength(command);
+                    else
+                        hexCommand = Utilities.ConvertHexStringToByteArray(string.Concat(Utilities.CalculateHexLength(command).Select(b => b.ToString("D2"))));
+                    stream.Write(hexCommand, 0, hexCommand.Length);
 
                     var stringCommand = Encoding.ASCII.GetBytes(command);
                     stream.Write(stringCommand, 0, stringCommand.Length);
@@ -154,7 +159,9 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         public Result Purchase(string transactionId, string amount, bool printReceiptOnPOS = true)
         {
             var purchaseResult = new PurchaseResult();
-            var message  = SendCommand(new Purchase { TransactionId = transactionId, Amount = amount,
+            var message  = SendCommand(new Purchase {
+                TransactionId = transactionId,
+                Amount = amount,
                 PrintReceiptOnPOS = printReceiptOnPOS }.ToString(),
                 _purchaseTags);
             var success = message.Substring(6, 3).Equals(_okPurchase);
@@ -241,14 +248,15 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
         /// <param name="amount">The amount.</param>
-        public Result Refund(PurchaseResult purchaseResult)
+        public Result Refund(PurchaseResult purchaseResult, bool printReceiptOnPOS = true)
         {
             var message = SendCommand(new Refund {
                 TransactionId = purchaseResult.TransactionId,
                 Amount = purchaseResult.Amount,
                 OriginalPosIdentification = purchaseResult.OriginalPosIdentification,
                 OriginalReceiptData = purchaseResult.OriginalReceiptData,
-                OriginalReceiptTime = purchaseResult.OriginalReceiptData
+                OriginalReceiptTime = purchaseResult.OriginalReceiptData,
+                PrintReceiptOnPOS = printReceiptOnPOS
             }.ToString());
 
             var result = new Result

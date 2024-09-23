@@ -4,13 +4,14 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
 {
     internal class Refund
     {
-        private const string _commandRefund = "C00210#TRANSACTIONID##AMOUNT##ORIGINALPOSIDENTIFICATION##ORIGINALRECEIPTDATA##ORIGINALRECEIPTTIME#00";
+        private const string _commandRefund = "C00210#TRANSACTIONID##AMOUNT##ORIGINALPOSIDENTIFICATION##ORIGINALRECEIPTDATA##ORIGINALRECEIPTTIME##PRINTRECEIPTONPOS#0";
 
         public string TransactionId { get; set; }
         public string Amount { get; set; }
         public string OriginalPosIdentification { get; set; }
         public DateTime OriginalReceiptData { get; set; }
         public DateTime OriginalReceiptTime { get; set; }
+        public bool PrintReceiptOnPOS { get; set; } = false;
 
         override public string ToString()
         {
@@ -25,7 +26,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
                 .Replace("#ORIGINALRECEIPTTIME#",
                     OriginalReceiptTime.Hour.ToString().PadLeft(2, '0') +
                     OriginalReceiptTime.Minute.ToString().PadLeft(2, '0') +
-                    OriginalReceiptTime.Second.ToString().PadLeft(2, '0'));
+                    OriginalReceiptTime.Second.ToString().PadLeft(2, '0'))
+                .Replace("#PRINTRECEIPTONPOS#", Convert.ToByte(PrintReceiptOnPOS).ToString());
         }
     }
 }
