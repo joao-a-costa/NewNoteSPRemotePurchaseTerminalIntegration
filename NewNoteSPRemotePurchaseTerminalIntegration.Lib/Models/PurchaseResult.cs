@@ -8,6 +8,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
         public string Amount { get; set; }
         public string OriginalPosIdentification { get; set; }
         public DateTime OriginalReceiptData { get; set; }
-        public string ReceiptData { get; set; }
+        public PurchaseResultReceipt ReceiptData { get; set; }
     }
 }
