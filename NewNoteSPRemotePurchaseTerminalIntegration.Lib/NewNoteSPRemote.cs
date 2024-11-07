@@ -105,7 +105,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                         int bytesRead;
                         while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
                             ms.Write(buffer, 0, bytesRead);
-                        message = Encoding.Default.GetString(ms.ToArray()).Substring(2);
+                        message = Encoding.UTF8.GetString(ms.ToArray()).Substring(2);
                         Console.WriteLine($"{_infoReceived}: {message}");
                     }
                 }
@@ -148,6 +148,22 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             return new Result { Success = message.Substring(9).StartsWith(_okClosePeriod), Message = message };
         }
 
+        static string InsertLineBreaks(string input, int maxLength)
+        {
+            for (int i = maxLength; i < input.Length; i += maxLength)
+            {
+                // Find the next whitespace to insert the line break
+                int nextWhitespace = input.LastIndexOf(' ', i, i - (i - maxLength));
+                if (nextWhitespace > 0)
+                {
+                    input = input.Substring(0, nextWhitespace) + Environment.NewLine + input.Substring(nextWhitespace + 1);
+                    i = nextWhitespace; // Reset the loop index to continue after the break
+                }
+            }
+
+            return input;
+        }
+
         /// <summary>
         /// Purchases the specified transaction identifier and amount.
         /// </summary>
@@ -170,7 +186,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             {
                 var receiptPosIdentification = string.Empty;
                 var receiptDataParsed = DateTime.Now;
-                var receiptData = string.Empty;
+                PurchaseResultReceipt receiptData = null;
 
                 purchaseResult.TransactionId = transactionId;
                 purchaseResult.Amount = amount;
@@ -190,7 +206,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                         );
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
-                        receiptData = message.Substring(29);
+                        receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
                 }
                 else

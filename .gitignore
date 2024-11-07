@@ -7,4 +7,4 @@
 /NewNoteSPRemotePurchaseTerminalIntegration.Console/bin
 /NewNoteSPRemotePurchaseTerminalIntegration.Console/obj
 /NewNoteSPRemotePurchaseTerminalIntegration.Console/.vs
-/NewNoteSPRemotePurchaseTerminalIntegration.Lib
+/NewNoteSPRemotePurchaseTerminalIntegration.Lib/nugetPackagePush.cmd
