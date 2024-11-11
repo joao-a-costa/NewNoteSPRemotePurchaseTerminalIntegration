@@ -43,5 +43,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             [Description("ERRO")]
             ERRO = 012,
         }
+
+        public enum ReceiptWidth
+        {
+            [Description("For 20 columns")]
+            TWENTYCOLUMNS = 0,
+            [Description("For 40 columns")]
+            FORTYCOLUMNS = 1,
+        }
     }
 }
