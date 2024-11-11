@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Text;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.ComponentModel;
 using static NewNoteSPRemotePurchaseTerminalIntegration.Lib.Enums;
 using NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models;
-using System.Text.RegularExpressions;
 
 namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 {
@@ -98,6 +99,39 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             {
                 MerchantCopy = merchantCopy,
                 ClientCopy = clientCopy
+            };
+        }
+
+        /// <summary>
+        /// Breaks the string into chunks.
+        /// </summary>
+        /// <param name="merchantCopy">The merchant copy.</param>
+        /// <param name="clientCopy">The client copy.</param>
+        /// <param name="chunkSize">The size of the chunks.</param>
+        /// <returns>The purchase result receipt.</returns>
+        public static PurchaseResultReceipt BreakStringIntoChunks(string merchantCopy,
+            string clientCopy, int chunkSize)
+        {
+            var merchantCopyResult = new StringBuilder();
+
+            for (int i = 0; i < merchantCopy.Length; i += chunkSize)
+            {
+                int length = Math.Min(chunkSize, merchantCopy.Length - i);
+                merchantCopyResult.AppendLine(merchantCopy.Substring(i, length));
+            }
+
+            var clientCopyCopyResult = new StringBuilder();
+
+            for (int i = 0; i < clientCopy.Length; i += chunkSize)
+            {
+                int length = Math.Min(chunkSize, clientCopy.Length - i);
+                clientCopyCopyResult.AppendLine(clientCopy.Substring(i, length));
+            }
+
+            return new PurchaseResultReceipt
+            {
+                MerchantCopy = merchantCopyResult.ToString(),
+                ClientCopy = clientCopyCopyResult.ToString()
             };
         }
     }

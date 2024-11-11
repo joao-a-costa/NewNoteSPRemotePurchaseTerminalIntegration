@@ -172,13 +172,16 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// <param name="originalPosIdentification">The original POS identification.</param>
         /// <param name="printReceiptOnPOS">if set to <c>true</c> [print receipt on POS].</param>
         /// <param name="originalReceiptData">The original receipt data.</param>
-        public Result Purchase(string transactionId, string amount, bool printReceiptOnPOS = true)
+        public Result Purchase(string transactionId, string amount, bool printReceiptOnPOS = true,
+            ReceiptWidth receiptWidth = ReceiptWidth.TWENTYCOLUMNS)
         {
             var purchaseResult = new PurchaseResult();
             var message  = SendCommand(new Purchase {
                 TransactionId = transactionId,
                 Amount = amount,
-                PrintReceiptOnPOS = printReceiptOnPOS }.ToString(),
+                PrintReceiptOnPOS = printReceiptOnPOS,
+                ReceiptWidth = receiptWidth
+                }.ToString(),
                 _purchaseTags);
             var success = message.Substring(6, 3).Equals(_okPurchase);
 
@@ -206,7 +209,19 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                         );
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
-                        receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
+
+                        var receiptStrings = message.ToString().Split(new string[] { "\u0001" },
+                            StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 3)
+                        {
+                            receiptData = Utilities.BreakStringIntoChunks(
+                                receiptStrings[1].Substring(1),
+                                receiptStrings[2].Substring(1),
+                                20);
+                        }
+                        else
+                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
                 }
                 else
