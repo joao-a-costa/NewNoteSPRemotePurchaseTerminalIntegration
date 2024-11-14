@@ -47,9 +47,9 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         public enum ReceiptWidth
         {
             [Description("For 20 columns")]
-            TWENTYCOLUMNS = 0,
+            TWENTYCOLUMNS = 20,
             [Description("For 40 columns")]
-            FORTYCOLUMNS = 1,
+            FORTYCOLUMNS = 40,
         }
     }
 }

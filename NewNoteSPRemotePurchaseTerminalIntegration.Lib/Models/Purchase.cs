@@ -18,7 +18,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models
                 .Replace("#TRANSACTIONID#", TransactionId.PadLeft(4, '0'))
                 .Replace("#AMOUNT#", Amount.PadLeft(8, '0'))
                 .Replace("#PRINTRECEIPTONPOS#", Convert.ToByte(PrintReceiptOnPOS).ToString())
-                .Replace("#RECEIPTWIDTH#", Convert.ToInt16(ReceiptWidth).ToString());
+                .Replace("#RECEIPTWIDTH#", (ReceiptWidth == ReceiptWidth.TWENTYCOLUMNS ? 0 : 1).ToString());
 
             return command;
         }
