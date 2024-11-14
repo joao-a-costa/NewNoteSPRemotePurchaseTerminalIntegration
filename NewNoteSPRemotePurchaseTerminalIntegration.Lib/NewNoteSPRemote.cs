@@ -218,7 +218,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                             receiptData = Utilities.BreakStringIntoChunks(
                                 receiptStrings[1].Substring(1),
                                 receiptStrings[2].Substring(1),
-                                20);
+                                (int)receiptWidth);
                         }
                         else
                             receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
