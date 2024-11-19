@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models;
@@ -23,7 +24,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _okPurchase = "000";
         private const string _okRefund = "DEVOL. EFECTUADA";
 
-        private const string _patternReceiptOnECRTerminalIDAndDate = @"Ident\. TPA:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
+        private const string _patternReceiptOnECRTerminalIDAndDate1 = @"Ident\. TPA:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
+        private const string _patternReceiptOnECRTerminalIDAndDate2 = @"Terminal Pagamento Automático:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
         private const string _dateTimeFormatOnECR = "yy-MM-dd HH:mm:ss";
 
         private const string _patternReceiptOnPOSTerminalID = @"[\u001c\b](\d{8})";
@@ -32,6 +34,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _dateTimeFormatOnPOS = "yyyyMMdd HHmmss";
 
         private const string _purchaseTags = "0B9F1C009A009F21009F4100";
+        private const string _CaracterBreakline20Columns = "\u0001";
+        private const string _CaracterBreakline40Columns = "\u0002";
 
 
         #endregion
@@ -197,7 +201,9 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 if (!printReceiptOnPOS)
                 {
                     // Match Ident. TPA for terminal ID, date, and time:
-                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate);
+                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+                    if (!matchIdentTpa.Success)
+                        matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
                     if (matchIdentTpa.Success)
                     {
                         DateTime.TryParseExact(
@@ -210,8 +216,10 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        var receiptStrings = message.ToString().Split(new string[] { "\u0001" },
-                            StringSplitOptions.None);
+                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline20Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline40Columns }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 3)
                         {
