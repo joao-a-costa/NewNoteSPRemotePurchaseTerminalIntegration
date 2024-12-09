@@ -134,9 +134,14 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Opens the period.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
-        public Result OpenPeriod(string transactionId)
+        public Result OpenPeriod(string transactionId, bool printReceiptOnPOS = true,
+            ReceiptWidth receiptWidth = ReceiptWidth.TWENTYCOLUMNS)
         {
-            var message = SendCommand(new OpenPeriod { TransactionId = transactionId }.ToString());
+            var message = SendCommand(new OpenPeriod {
+                TransactionId = transactionId,
+                PrintReceiptOnPOS = printReceiptOnPOS,
+                ReceiptWidth = receiptWidth
+            }.ToString());
 
             return new Result { Success = message.Substring(10).StartsWith(_okOpenPeriod), Message = message };
         }
@@ -145,27 +150,16 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Closes the period.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
-        public Result ClosePeriod(string transactionId)
+        public Result ClosePeriod(string transactionId, bool printReceiptOnPOS = true,
+            ReceiptWidth receiptWidth = ReceiptWidth.TWENTYCOLUMNS)
         {
-            var message = SendCommand(new ClosePeriod { TransactionId = transactionId }.ToString());
+            var message = SendCommand(new ClosePeriod {
+                TransactionId = transactionId,
+                PrintReceiptOnPOS = printReceiptOnPOS,
+                ReceiptWidth = receiptWidth
+            }.ToString());
 
             return new Result { Success = message.Substring(9).StartsWith(_okClosePeriod), Message = message };
-        }
-
-        static string InsertLineBreaks(string input, int maxLength)
-        {
-            for (int i = maxLength; i < input.Length; i += maxLength)
-            {
-                // Find the next whitespace to insert the line break
-                int nextWhitespace = input.LastIndexOf(' ', i, i - (i - maxLength));
-                if (nextWhitespace > 0)
-                {
-                    input = input.Substring(0, nextWhitespace) + Environment.NewLine + input.Substring(nextWhitespace + 1);
-                    i = nextWhitespace; // Reset the loop index to continue after the break
-                }
-            }
-
-            return input;
         }
 
         /// <summary>

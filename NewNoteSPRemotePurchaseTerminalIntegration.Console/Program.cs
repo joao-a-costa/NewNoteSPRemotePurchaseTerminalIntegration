@@ -16,8 +16,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
 
         #region "Members"
 
-        //private static readonly string serverIp = "192.168.40.175";
-        private static readonly string serverIp = "192.168.1.252";
+        private static readonly string serverIp = "192.168.40.252";
+        //private static readonly string serverIp = "192.168.1.252";
         private static readonly int port = 15200;
 
         private static readonly NewNoteSPRemote newNoteSPRemote = new NewNoteSPRemote(serverIp, port);
@@ -62,7 +62,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
                             newNoteSPRemote.TerminalStatus();
                             break;
                         case TerminalCommandOptions.SendTerminalOpenPeriod:
-                            newNoteSPRemote.OpenPeriod("0001");
+                            newNoteSPRemote.OpenPeriod("0001", false);
                             break;
                         case TerminalCommandOptions.SendTerminalClosePeriod:
                             newNoteSPRemote.ClosePeriod("0001");
