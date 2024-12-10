@@ -114,7 +114,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         {
             var merchantCopyResult = new StringBuilder();
 
-            for (int i = 0; i < merchantCopy.Length; i += chunkSize)
+            for (int i = 0; i < merchantCopy?.Length; i += chunkSize)
             {
                 int length = Math.Min(chunkSize, merchantCopy.Length - i);
                 merchantCopyResult.AppendLine(merchantCopy.Substring(i, length));
@@ -122,7 +122,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
             var clientCopyCopyResult = new StringBuilder();
 
-            for (int i = 0; i < clientCopy.Length; i += chunkSize)
+            for (int i = 0; i < clientCopy?.Length; i += chunkSize)
             {
                 int length = Math.Min(chunkSize, clientCopy.Length - i);
                 clientCopyCopyResult.AppendLine(clientCopy.Substring(i, length));
@@ -130,8 +130,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
             return new PurchaseResultReceipt
             {
-                MerchantCopy = merchantCopyResult.ToString(),
-                ClientCopy = clientCopyCopyResult.ToString()
+                MerchantCopy = merchantCopyResult?.ToString(),
+                ClientCopy = clientCopyCopyResult?.ToString()
             };
         }
     }
