@@ -19,8 +19,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _infoUnknownError = "Erro no processamento. Consulte o terminal para mais detalhes";
 
         private const string _okTerminalStatus = "INIT OK";
-        private const string _okOpenPeriod = "PERÍODO ABERTO";
-        private const string _okClosePeriod = "PERÍODO FECHADO";
         private const string _okPurchase = "000";
         private const string _okRefund = "DEVOL. EFECTUADA";
 
@@ -28,14 +26,11 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _patternReceiptOnECRTerminalIDAndDate2 = @"Terminal Pagamento Automático:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
         private const string _dateTimeFormatOnECR = "yy-MM-dd HH:mm:ss";
 
-        private const string _patternReceiptOnPOSTerminalID = @"[\u001c\b](\d{8})";
-        private const string _patternReceiptOnPOSDate = @"(\d{8})";
-        private const string _patternReceiptOnPOSTime = @"(\d{6})";
-        private const string _dateTimeFormatOnPOS = "yyyyMMdd HHmmss";
-
         private const string _purchaseTags = "0B9F1C009A009F21009F4100";
         private const string _CaracterBreakline20Columns = "\u0001";
         private const string _CaracterBreakline40Columns = "\u0002";
+        private const string _CaracterBreakline20ColumnsOpenPeriod = "0001\0";
+        private const string _CaracterBreakline40ColumnsOpenPeriod = "\u0001";
 
 
         #endregion
@@ -137,13 +132,73 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         public Result OpenPeriod(string transactionId, bool printReceiptOnPOS = true,
             ReceiptWidth receiptWidth = ReceiptWidth.TWENTYCOLUMNS)
         {
+            var purchaseResult = new PurchaseResult();
             var message = SendCommand(new OpenPeriod {
                 TransactionId = transactionId,
                 PrintReceiptOnPOS = printReceiptOnPOS,
                 ReceiptWidth = receiptWidth
             }.ToString());
 
-            return new Result { Success = message.Substring(10).StartsWith(_okOpenPeriod), Message = message };
+            var success = message.Substring(6, 3).Equals(_okPurchase);
+
+            if (success)
+            {
+                var receiptPosIdentification = string.Empty;
+                var receiptDataParsed = DateTime.Now;
+                PurchaseResultReceipt receiptData = null;
+
+                purchaseResult.TransactionId = transactionId;
+                //purchaseResult.Amount = amount;
+
+                if (!printReceiptOnPOS)
+                {
+                    // Match Ident. TPA for terminal ID, date, and time:
+                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+                    if (!matchIdentTpa.Success)
+                        matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+                    if (matchIdentTpa.Success)
+                    {
+                        DateTime.TryParseExact(
+                            matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                            _dateTimeFormatOnECR,
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out receiptDataParsed
+                        );
+
+                        receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline20ColumnsOpenPeriod }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline40ColumnsOpenPeriod }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 2)
+                        {
+                            receiptData = Utilities.BreakStringIntoChunks(
+                                receiptStrings[1].Substring(1),
+                                string.Empty,
+                                (int)receiptWidth);
+                        }
+                        else
+                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
+                    }
+                }
+
+                purchaseResult.OriginalPosIdentification = receiptPosIdentification;
+                purchaseResult.OriginalReceiptData = receiptDataParsed;
+                purchaseResult.ReceiptData = receiptData;
+            }
+
+            var result = new Result
+            {
+                Success = success,
+                ExtraData = purchaseResult
+            };
+
+            result.Message = result.Success ? message : ParseErrorResponse(message);
+
+            return result;
         }
 
         /// <summary>
@@ -153,13 +208,73 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         public Result ClosePeriod(string transactionId, bool printReceiptOnPOS = true,
             ReceiptWidth receiptWidth = ReceiptWidth.TWENTYCOLUMNS)
         {
+            var purchaseResult = new PurchaseResult();
             var message = SendCommand(new ClosePeriod {
                 TransactionId = transactionId,
                 PrintReceiptOnPOS = printReceiptOnPOS,
                 ReceiptWidth = receiptWidth
             }.ToString());
 
-            return new Result { Success = message.Substring(9).StartsWith(_okClosePeriod), Message = message };
+            var success = message.Substring(6, 3).Equals(_okPurchase);
+
+            if (success)
+            {
+                var receiptPosIdentification = string.Empty;
+                var receiptDataParsed = DateTime.Now;
+                PurchaseResultReceipt receiptData = null;
+
+                purchaseResult.TransactionId = transactionId;
+                //purchaseResult.Amount = amount;
+
+                if (!printReceiptOnPOS)
+                {
+                    // Match Ident. TPA for terminal ID, date, and time:
+                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+                    if (!matchIdentTpa.Success)
+                        matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+                    if (matchIdentTpa.Success)
+                    {
+                        DateTime.TryParseExact(
+                            matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                            _dateTimeFormatOnECR,
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out receiptDataParsed
+                        );
+
+                        receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline20Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline40Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 2)
+                        {
+                            receiptData = Utilities.BreakStringIntoChunks(
+                                receiptStrings[1].Substring(1),
+                                string.Empty,
+                                (int)receiptWidth);
+                        }
+                        else
+                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
+                    }
+                }
+
+                purchaseResult.OriginalPosIdentification = receiptPosIdentification;
+                purchaseResult.OriginalReceiptData = receiptDataParsed;
+                purchaseResult.ReceiptData = receiptData;
+            }
+
+            var result = new Result
+            {
+                Success = success,
+                ExtraData = purchaseResult
+            };
+
+            result.Message = result.Success ? message : ParseErrorResponse(message);
+
+            return result;
         }
 
         /// <summary>
@@ -224,39 +339,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                         }
                         else
                             receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
-                    }
-                }
-                else
-                {
-                    // Define regex patterns for terminal ID, date, and time
-                    string terminalIdPattern = _patternReceiptOnPOSTerminalID;  // Matches 8 digits after a specific control character
-                    string datePattern = _patternReceiptOnPOSDate;  // Matches 8 digits (YYYYMMDD) for date
-                    string timePattern = _patternReceiptOnPOSTime;  // Matches 6 digits (HHMMSS) for time
-
-                    // Find matches for terminal ID, date, and time
-                    Match terminalIdMatch = Regex.Match(message, terminalIdPattern);
-
-                    if (terminalIdMatch.Success)
-                    {
-                        receiptPosIdentification = terminalIdMatch.Groups[1].Value;
-
-                        Match dateMatch = Regex.Match(message.Substring(terminalIdMatch.Index + terminalIdMatch.Length), datePattern);
-
-                        if (dateMatch.Success)
-                        {
-                            Match timeMatch = Regex.Match(message.Substring(terminalIdMatch.Index + terminalIdMatch.Length + dateMatch.Index + dateMatch.Length), timePattern);
-
-                            if (timeMatch.Success)
-                            {
-                                DateTime.TryParseExact(
-                                    dateMatch.Groups[1].Value + " " + timeMatch.Groups[1].Value,
-                                    _dateTimeFormatOnPOS,
-                                    CultureInfo.InvariantCulture,
-                                    DateTimeStyles.None,
-                                    out receiptDataParsed
-                                );
-                            }
-                        }
                     }
                 }
 
