@@ -27,10 +27,11 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _dateTimeFormatOnECR = "yy-MM-dd HH:mm:ss";
 
         private const string _purchaseTags = "0B9F1C009A009F21009F4100";
-        private const string _CaracterBreakline20Columns = "\u0001";
-        private const string _CaracterBreakline40Columns = "\u0002";
-        private const string _CaracterBreakline20ColumnsOpenPeriod = "0001\0";
-        private const string _CaracterBreakline40ColumnsOpenPeriod = "\u0001";
+        private const string _CaracterBreakline1Columns = "\u0001";
+        private const string _CaracterBreakline2Columns = "\u0002";
+        private const string _CaracterBreakline3Columns = "\u0003";
+        //private const string _CaracterBreakline20ColumnsOpenPeriod = "0001\0";
+        //private const string _CaracterBreakline40ColumnsOpenPeriod = "\u0001";
 
 
         #endregion
@@ -168,10 +169,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline20ColumnsOpenPeriod }, StringSplitOptions.None);
+                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline1Columns }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline40ColumnsOpenPeriod }, StringSplitOptions.None);
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline2Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline3Columns }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 2)
                         {
@@ -244,10 +248,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline20Columns }, StringSplitOptions.None);
+                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline1Columns }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline40Columns }, StringSplitOptions.None);
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline2Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline3Columns }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 2)
                         {
@@ -325,10 +332,10 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline20Columns }, StringSplitOptions.None);
+                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline1Columns }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline40Columns }, StringSplitOptions.None);
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline2Columns }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 3)
                         {
