@@ -130,12 +130,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Opens the period.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
-        public Result OpenPeriod(string transactionId, bool printReceiptOnPOS = true,
+        public Result OpenPeriod(string transactionId, bool useSupervisorCard = false, bool printReceiptOnPOS = true,
             ReceiptWidth receiptWidth = ReceiptWidth.TWENTYCOLUMNS)
         {
             var purchaseResult = new PurchaseResult();
             var message = SendCommand(new OpenPeriod {
                 TransactionId = transactionId,
+                UseSupervisorCard = useSupervisorCard,
                 PrintReceiptOnPOS = printReceiptOnPOS,
                 ReceiptWidth = receiptWidth
             }.ToString());
@@ -209,12 +210,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Closes the period.
         /// </summary>
         /// <param name="transactionId">The transaction identifier.</param>
-        public Result ClosePeriod(string transactionId, bool printReceiptOnPOS = true,
+        public Result ClosePeriod(string transactionId, bool useSupervisorCard = false, bool printReceiptOnPOS = true,
             ReceiptWidth receiptWidth = ReceiptWidth.TWENTYCOLUMNS)
         {
             var purchaseResult = new PurchaseResult();
             var message = SendCommand(new ClosePeriod {
                 TransactionId = transactionId,
+                UseSupervisorCard = useSupervisorCard,
                 PrintReceiptOnPOS = printReceiptOnPOS,
                 ReceiptWidth = receiptWidth
             }.ToString());
