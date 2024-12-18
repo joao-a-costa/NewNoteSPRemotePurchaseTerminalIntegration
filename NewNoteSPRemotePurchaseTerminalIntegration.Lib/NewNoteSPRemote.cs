@@ -30,8 +30,9 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _CaracterBreakline1Columns = "\u0001";
         private const string _CaracterBreakline2Columns = "\u0002";
         private const string _CaracterBreakline3Columns = "\u0003";
-        //private const string _CaracterBreakline20ColumnsOpenPeriod = "0001\0";
-        //private const string _CaracterBreakline40ColumnsOpenPeriod = "\u0001";
+        private const string _CaracterBreakline4Columns = "0001\0";
+        private const string _CaracterBreakline5Columns = "\u0001";
+        private const string _CaracterBreakline6Columns = "\0�";
 
 
         #endregion
@@ -178,6 +179,15 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                         if (receiptStrings.Length == 1)
                             receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline3Columns }, StringSplitOptions.None);
 
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline4Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline5Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline6Columns }, StringSplitOptions.None);
+
                         if (receiptStrings.Length == 2)
                         {
                             receiptData = Utilities.BreakStringIntoChunks(
@@ -257,6 +267,15 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         if (receiptStrings.Length == 1)
                             receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline3Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline4Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline5Columns }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline6Columns }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 2)
                         {
