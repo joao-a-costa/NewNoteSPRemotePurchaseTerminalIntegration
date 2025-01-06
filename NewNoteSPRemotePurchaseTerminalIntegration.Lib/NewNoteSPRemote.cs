@@ -27,13 +27,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _dateTimeFormatOnECR = "yy-MM-dd HH:mm:ss";
 
         private const string _purchaseTags = "0B9F1C009A009F21009F4100";
-        private const string _CaracterBreakline1Columns = "\u0001";
-        private const string _CaracterBreakline2Columns = "\u0002";
-        private const string _CaracterBreakline3Columns = "\u0003";
-        private const string _CaracterBreakline4Columns = "0001\0";
-        private const string _CaracterBreakline5Columns = "\u0001";
-        private const string _CaracterBreakline6Columns = "\0�";
 
+        private const string _sibsKeyword = "SIBS";
 
         #endregion
 
@@ -171,24 +166,12 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline1Columns }, StringSplitOptions.None);
+                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline2Columns }, StringSplitOptions.None);
+                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
 
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline3Columns }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline4Columns }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline5Columns }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline6Columns }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 2)
+                        if (receiptStrings.Length >= 2)
                         {
                             receiptData = Utilities.BreakStringIntoChunks(
                                 receiptStrings[1].Substring(1),
@@ -260,24 +243,15 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline1Columns }, StringSplitOptions.None);
+                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline2Columns }, StringSplitOptions.None);
+                            receiptStrings = message.ToString().Split(new[] { (char)0x02 }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline3Columns }, StringSplitOptions.None);
+                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
 
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline4Columns }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline5Columns }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline6Columns }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 2)
+                        if (receiptStrings.Length >= 2)
                         {
                             receiptData = Utilities.BreakStringIntoChunks(
                                 receiptStrings[1].Substring(1),
@@ -353,16 +327,18 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        var receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline1Columns }, StringSplitOptions.None);
+                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
 
                         if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new string[] { _CaracterBreakline2Columns }, StringSplitOptions.None);
+                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
 
-                        if (receiptStrings.Length == 3)
+                        if (receiptStrings.Length >= 2)
                         {
+                            var sibsIndex = receiptStrings[2].Substring(1).IndexOf(_sibsKeyword);
+
                             receiptData = Utilities.BreakStringIntoChunks(
                                 receiptStrings[1].Substring(1),
-                                receiptStrings[2].Substring(1),
+                                sibsIndex != -1 ? receiptStrings[2].Substring(1).Substring(0, sibsIndex + _sibsKeyword.Length) : receiptStrings[2].Substring(1),
                                 (int)receiptWidth);
                         }
                         else
@@ -401,10 +377,61 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 OriginalReceiptTime = purchaseResult.OriginalReceiptData,
                 PrintReceiptOnPOS = printReceiptOnPOS
             }.ToString());
+            var success = message.Substring(6, 3).Equals(_okPurchase);
+
+            if (success)
+            {
+                var receiptPosIdentification = string.Empty;
+                var receiptDataParsed = DateTime.Now;
+                PurchaseResultReceipt receiptData = null;
+
+                //purchaseResult.TransactionId = transactionId;
+                //purchaseResult.Amount = amount;
+
+                if (!printReceiptOnPOS)
+                {
+                    // Match Ident. TPA for terminal ID, date, and time:
+                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+                    if (!matchIdentTpa.Success)
+                        matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+                    if (matchIdentTpa.Success)
+                    {
+                        DateTime.TryParseExact(
+                            matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                            _dateTimeFormatOnECR,
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out receiptDataParsed
+                        );
+
+                        receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length >= 2)
+                        {
+                            var sibsIndex = receiptStrings[2].Substring(1).IndexOf(_sibsKeyword);
+
+                            receiptData = Utilities.BreakStringIntoChunks(
+                                receiptStrings[1].Substring(1),
+                                sibsIndex != -1 ? receiptStrings[2].Substring(1).Substring(0, sibsIndex + _sibsKeyword.Length) : receiptStrings[2].Substring(1));
+                        }
+                        else
+                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
+                    }
+                }
+
+                purchaseResult.OriginalPosIdentification = receiptPosIdentification;
+                purchaseResult.OriginalReceiptData = receiptDataParsed;
+                purchaseResult.ReceiptData = receiptData;
+            }
 
             var result = new Result
             {
-                Success = message.Substring(9).StartsWith(_okRefund),
+                Success = success,
                 ExtraData = purchaseResult
             };
 
