@@ -110,7 +110,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// <param name="chunkSize">The size of the chunks.</param>
         /// <returns>The purchase result receipt.</returns>
         public static PurchaseResultReceipt BreakStringIntoChunks(string merchantCopy,
-            string clientCopy, int chunkSize)
+            string clientCopy, int chunkSize = 20)
         {
             var merchantCopyResult = new StringBuilder();
 

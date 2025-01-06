@@ -48,8 +48,8 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         {
             [Description("For 20 columns")]
             TWENTYCOLUMNS = 20,
-            [Description("For 40 columns")]
-            FORTYCOLUMNS = 40,
+            //[Description("For 40 columns")]
+            //FORTYCOLUMNS = 40,
         }
     }
 }
