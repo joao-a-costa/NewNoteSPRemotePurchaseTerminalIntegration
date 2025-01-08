@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 
 namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 {
@@ -21,6 +22,16 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             [Description("Stop listening")]
             StopTheServer = 9999
         }
+
+        public static Dictionary<string, string> NewNotePositiveResponses { get; } = new Dictionary<string, string>
+        {
+            { "EM SERVIÇO", "In service" },
+            { "PAGAM. EFECTUADO", "Successful payment" },
+            { "DEVOL EFECTUADA", "Successful refund" },
+            { "VERIF ASSINATURA", "Successful payment. Verify signature" },
+            { "IDENTIF. CLIENTE", "Successful payment. Identify Client" },
+            { "IDENTIF+ASSINAT.", "Successful payment. Verify signature\r\nand Identify Client" },
+        };
 
         public enum NewNoteNegativeResponses
         {
