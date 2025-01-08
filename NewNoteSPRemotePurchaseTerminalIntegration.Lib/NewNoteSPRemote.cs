@@ -329,7 +329,10 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 ExtraData = purchaseResult
             };
 
+            NewNotePositiveResponses.TryGetValue(message.Substring(9, 16), out string messageDescription);
+
             result.Message = result.Success ? message : ParseErrorResponse(message);
+            result.MessageDescription = messageDescription;
 
             return result;
         }
@@ -395,7 +398,10 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 ExtraData = purchaseResult
             };
 
+            NewNotePositiveResponses.TryGetValue(message.Substring(9, 16), out string messageDescription);
+
             result.Message = result.Success ? message : ParseErrorResponse(message);
+            result.MessageDescription = messageDescription;
 
             return result;
         }
