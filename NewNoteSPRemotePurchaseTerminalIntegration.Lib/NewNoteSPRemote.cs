@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Collections.Generic;
-using System.Globalization;
 using NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models;
 using static NewNoteSPRemotePurchaseTerminalIntegration.Lib.Enums;
 
@@ -20,6 +20,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
         private const string _okTerminalStatus = "INIT OK";
         private const string _okPurchase = "000";
+        private const string _okRefund = "DEVOL. EFECTUADA";
 
         private const string _patternReceiptOnECRTerminalIDAndDate1 = @"Ident\. TPA:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
         private const string _patternReceiptOnECRTerminalIDAndDate2 = @"Terminal Pagamento Automático:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
@@ -41,8 +42,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         #region "Properties"
 
         public string OriginalPosIdentification { get; }
-        public string MerchantCopy { get; set; }
-        public string ClientCopy { get; set; }
 
         #endregion
 
@@ -69,12 +68,9 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Sends the command to the server.
         /// </summary>
         /// <param name="command">The command to send.</param>
-        public string SendCommand(string command, string tags = "", bool parseReceipts = true)
+        public string SendCommand(string command, string tags = "")
         {
             var message = string.Empty;
-
-            MerchantCopy = string.Empty;
-            ClientCopy = string.Empty;
 
             MessageSent?.Invoke(this, command);
 
@@ -107,9 +103,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                             ms.Write(buffer, 0, bytesRead);
                         message = Encoding.UTF8.GetString(ms.ToArray()).Substring(2);
                         Console.WriteLine($"{_infoReceived}: {message}");
-
-                        if (parseReceipts)
-                            SplitByReservedBytes(message);
                     }
                 }
             }
@@ -122,7 +115,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// </summary>
         public Result TerminalStatus()
         {
-            var message = SendCommand(new TerminalStatus().ToString(), parseReceipts: false);
+            var message = SendCommand(new TerminalStatus().ToString());
             var success = message.Substring(9).StartsWith(_okTerminalStatus);
             var originalPosIdentification = success ? message.Substring(26) : string.Empty;
 
@@ -173,10 +166,20 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        receiptData = Utilities.BreakStringIntoChunks(
-                            MerchantCopy,
-                            ClientCopy,
-                            (int)receiptWidth);
+                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length >= 2)
+                        {
+                            receiptData = Utilities.BreakStringIntoChunks(
+                                receiptStrings[1].Substring(1),
+                                string.Empty,
+                                (int)receiptWidth);
+                        }
+                        else
+                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
                 }
 
@@ -240,10 +243,23 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        receiptData = Utilities.BreakStringIntoChunks(
-                            MerchantCopy,
-                            ClientCopy,
-                            (int)receiptWidth);
+                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new[] { (char)0x02 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length >= 2)
+                        {
+                            receiptData = Utilities.BreakStringIntoChunks(
+                                receiptStrings[1].Substring(1),
+                                string.Empty,
+                                (int)receiptWidth);
+                        }
+                        else
+                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
                 }
 
@@ -311,10 +327,22 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        receiptData = Utilities.BreakStringIntoChunks(
-                            MerchantCopy,
-                            ClientCopy,
-                            (int)receiptWidth);
+                        var receiptStrings = message.Substring(31).Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.Substring(31).Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length >= 2)
+                        {
+                            var sibsIndex = receiptStrings[1].Substring(1).IndexOf(_sibsKeyword);
+
+                            receiptData = Utilities.BreakStringIntoChunks(
+                                receiptStrings[0].Substring(1),
+                                sibsIndex != -1 ? receiptStrings[1].Substring(1).Substring(0, sibsIndex + _sibsKeyword.Length) : receiptStrings[1].Substring(1),
+                                (int)receiptWidth);
+                        }
+                        else
+                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
                 }
 
@@ -381,9 +409,21 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                         receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                        receiptData = Utilities.BreakStringIntoChunks(
-                            MerchantCopy,
-                            ClientCopy);
+                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length == 1)
+                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                        if (receiptStrings.Length >= 2)
+                        {
+                            var sibsIndex = receiptStrings[2].Substring(1).IndexOf(_sibsKeyword);
+
+                            receiptData = Utilities.BreakStringIntoChunks(
+                                receiptStrings[1].Substring(1),
+                                sibsIndex != -1 ? receiptStrings[2].Substring(1).Substring(0, sibsIndex + _sibsKeyword.Length) : receiptStrings[2].Substring(1));
+                        }
+                        else
+                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
                 }
 
@@ -437,207 +477,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
             return _infoUnknownError;
         }
-
-        private List<string> SplitByReservedBytes(string input)
-        {
-            byte[] reservedBytes = { 0x00, 0x01, 0x02 };
-            List<string> result = new List<string>();
-
-            // Convert the input string to byte array
-            byte[] inputBytes = Encoding.UTF8.GetBytes(input);
-
-            List<byte> currentPart = new List<byte>();
-
-            // Iterate over the input byte array
-            foreach (byte b in inputBytes)
-            {
-                // If the byte is one of the reserved bytes, process the current part
-                if (Array.Exists(reservedBytes, reserved => reserved == b))
-                {
-                    // If we have any bytes collected, add them as a part
-                    if (currentPart.Count > 0)
-                    {
-                        result.Add(Encoding.UTF8.GetString(currentPart.ToArray()));
-                        currentPart.Clear();
-                    }
-                }
-                else
-                {
-                    // Otherwise, add the byte to the current part
-                    currentPart.Add(b);
-                }
-            }
-
-            // Add the last part if there are any remaining bytes
-            if (currentPart.Count > 0)
-            {
-                result.Add(Encoding.UTF8.GetString(currentPart.ToArray()));
-            }
-
-            // Process resultStringList as needed
-            if (result?.Count >= 2)
-            {
-                var clientCopy = string.Empty;
-
-                if (result?.Count >= 3)
-                {
-                    var sibsIndex = result[2].Substring(1).IndexOf(_sibsKeyword);
-                    clientCopy = sibsIndex != -1 ? result[2].Substring(1).Substring(0, sibsIndex + _sibsKeyword.Length) : result[2].Substring(1);
-                }
-
-                MerchantCopy = result[1].Substring(1);
-                ClientCopy = clientCopy;
-            }
-
-            return result;
-        }
-
-        ///// <summary>
-        ///// Pa
-        ///// </summary>
-        ///// <param name="ms">The memory stream.</param>
-        //private void ParseReceipts(byte[] ms)
-        //{
-        //    byte[] byteArray = ms;
-        //    byte[] reservedBytes = { 0x00, 0x01, 0x02 }; // Example reserved bytes
-        //    StringBuilder resultString = new StringBuilder();
-        //    List<string> resultStringList = new List<string>();
-
-        //    int byteBufferCount = 0;   // To manage partial byte sequences
-        //    byte[] byteBuffer = new byte[299]; // Buffer to accumulate incoming bytes
-
-        //    // Loop through each byte in the byteArray
-        //    for (int i = 0; i < byteArray.Length; i++)
-        //    {
-        //        byte currentByte = byteArray[i];
-
-        //        if (reservedBytes.Contains(currentByte)) // Handling reserved bytes (delimiters)
-        //        {
-        //            Debug.WriteLine($"Reserved byte encountered: {currentByte}");
-
-        //            // Decode any pending bytes if they exist
-        //            if (byteBufferCount > 0)
-        //            {
-        //                try
-        //                {
-        //                    string decodedString = Encoding.UTF8.GetString(byteBuffer, 0, byteBufferCount);
-        //                    resultString.Append(decodedString);
-        //                    Debug.WriteLine($"Decoded UTF-8 string: {decodedString}");
-        //                }
-        //                catch (Exception ex)
-        //                {
-        //                    Debug.WriteLine($"Error decoding UTF-8 bytes: {ex.Message}");
-        //                }
-
-        //                byteBufferCount = 0;  // Reset byte buffer after processing
-        //            }
-
-        //            // Add the decoded string to the list and reset StringBuilder
-        //            if (resultString.Length > 0)
-        //            {
-        //                resultStringList.Add(resultString.ToString());
-        //                Debug.WriteLine($"String added to list: {resultString}");
-        //                resultString.Clear();
-        //            }
-        //        }
-        //        else
-        //        {
-        //            // Add byte to the buffer and increment buffer count
-        //            byteBuffer[byteBufferCount++] = currentByte;
-
-        //            // Try decoding the buffer if enough bytes are available
-        //            try
-        //            {
-        //                // Attempt to decode current buffer using UTF-8
-        //                string decodedString = Encoding.UTF8.GetString(byteBuffer, 0, byteBufferCount);
-        //                resultString.Append(decodedString);
-        //                Debug.WriteLine($"Decoded UTF-8 and appended: {decodedString}");
-
-        //                byteBufferCount = 0;  // Clear byte buffer after decoding
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                // If exception occurs, likely due to incomplete character
-        //                Debug.WriteLine($"Invalid byte sequence or incomplete character in UTF-8: {ex.Message}");
-
-        //                // Log the raw byte data that failed decoding
-        //                Debug.WriteLine("Failed byte sequence (raw bytes): " + BitConverter.ToString(byteBuffer, 0, byteBufferCount));
-        //            }
-
-        //            // If UTF-8 fails, attempt decoding with ISO-8859-1 (Latin-1) as a fallback
-        //            if (byteBufferCount > 0 && resultString.Length == 0)
-        //            {
-        //                try
-        //                {
-        //                    string decodedLatin1 = Encoding.GetEncoding("ISO-8859-1").GetString(byteBuffer, 0, byteBufferCount);
-        //                    resultString.Append(decodedLatin1);
-        //                    Debug.WriteLine($"Decoded ISO-8859-1 and appended: {decodedLatin1}");
-        //                    byteBufferCount = 0;
-        //                }
-        //                catch (Exception ex)
-        //                {
-        //                    Debug.WriteLine($"Error decoding ISO-8859-1 bytes: {ex.Message}");
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    // Flush any remaining bytes in the buffer (if any)
-        //    if (byteBufferCount > 0)
-        //    {
-        //        try
-        //        {
-        //            string finalDecoded = Encoding.UTF8.GetString(byteBuffer, 0, byteBufferCount);
-        //            resultString.Append(finalDecoded);
-        //            Debug.WriteLine($"Final decoded string using UTF-8: {finalDecoded}");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            Debug.WriteLine($"Final UTF-8 decoding error: {ex.Message}");
-        //        }
-
-        //        // If UTF-8 fails, try ISO-8859-1 for remaining buffer
-        //        if (resultString.Length == 0)
-        //        {
-        //            try
-        //            {
-        //                string finalLatin1Decoded = Encoding.GetEncoding("ISO-8859-1").GetString(byteBuffer, 0, byteBufferCount);
-        //                resultString.Append(finalLatin1Decoded);
-        //                Debug.WriteLine($"Final decoded string using ISO-8859-1: {finalLatin1Decoded}");
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                Debug.WriteLine($"Final ISO-8859-1 decoding error: {ex.Message}");
-        //            }
-        //        }
-        //    }
-
-        //    // Add remaining string data to the result list
-        //    if (resultString.Length > 0)
-        //    {
-        //        resultStringList.Add(resultString.ToString());
-        //        Debug.WriteLine($"Final string added: {resultString}");
-        //    }
-
-        //    // Process resultStringList as needed
-        //    if (resultStringList?.Count >= 2)
-        //    {
-        //        var clientCopy = string.Empty;
-
-        //        if (resultStringList?.Count >= 3)
-        //        {
-        //            var sibsIndex = resultStringList[2].Substring(1).IndexOf(_sibsKeyword);
-        //            clientCopy = sibsIndex != -1 ? resultStringList[2].Substring(1).Substring(0, sibsIndex + _sibsKeyword.Length) : resultStringList[2].Substring(1);
-        //        }
-
-        //        MerchantCopy = resultStringList[1].Substring(1);
-        //        ClientCopy = clientCopy;
-        //    }
-        //}
-
-
-
-
 
     }
 }
