@@ -17,10 +17,9 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
         #region "Members"
 
         private static readonly string serverIp = "192.168.40.252";
-        //private static readonly string serverIp = "192.168.1.252";
         private static readonly int port = 15200;
 
-        private static readonly NewNoteSPRemote newNoteSPRemote = new NewNoteSPRemote(serverIp, port);
+        private static NewNoteSPRemote newNoteSPRemote = null;
 
         #endregion
 
@@ -28,6 +27,11 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
         {
             try
             {
+                var logger = NLog.LogManager.GetCurrentClassLogger();
+                logger.Info("Application started.");
+
+                newNoteSPRemote = new NewNoteSPRemote(serverIp, port, logger);
+
                 ListenForUserInput();
             }
             catch (Exception e) when (e is ArgumentNullException || e is SocketException)
