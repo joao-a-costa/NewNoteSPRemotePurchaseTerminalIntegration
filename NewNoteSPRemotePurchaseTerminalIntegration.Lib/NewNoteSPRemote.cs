@@ -20,7 +20,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
         private const string _okTerminalStatus = "INIT OK";
         private const string _okPurchase = "000";
-        private const string _okRefund = "DEVOL. EFECTUADA";
 
         private const string _patternReceiptOnECRTerminalIDAndDate1 = @"Ident\. TPA:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
         private const string _patternReceiptOnECRTerminalIDAndDate2 = @"Terminal Pagamento Automático:\s*(\d+)\s*(\d{2}-\d{2}-\d{2})\s*(\d{2}:\d{2}:\d{2})";
@@ -29,6 +28,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         private const string _purchaseTags = "0B9F1C009A009F21009F4100";
 
         private const string _sibsKeyword = "SIBS";
+        private const string _infoErrorParsingMessage = "An error occurred while parsing the response: {Message}";
 
         #endregion
 
@@ -36,6 +36,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
         private readonly string serverIp;
         private readonly int port;
+        private readonly NLog.Logger logger;
 
         #endregion
 
@@ -56,10 +57,11 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
         #region "Constructors"
 
-        public NewNoteSPRemote(string serverIp, int port)
+        public NewNoteSPRemote(string serverIp, int port, NLog.Logger logger)
         {
             this.serverIp = serverIp;
             this.port = port;
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         #endregion
@@ -68,43 +70,56 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         /// Sends the command to the server.
         /// </summary>
         /// <param name="command">The command to send.</param>
+        /// <summary>
+        /// Sends the command to the server.
+        /// </summary>
+        /// <param name="command">The command to send.</param>
         public string SendCommand(string command, string tags = "")
         {
             var message = string.Empty;
 
-            MessageSent?.Invoke(this, command);
-
-            using (var client = new TcpClient(serverIp, port))
+            try
             {
-                using (var stream = client.GetStream())
+                MessageSent?.Invoke(this, command);
+                logger.Info("Sending command: {Command}", command);
+
+                using (var client = new TcpClient(serverIp, port))
                 {
-                    byte[] hexCommand = null;
-
-                    if (string.IsNullOrEmpty(tags))
-                        hexCommand = Utilities.CalculateHexLength(command);
-                    else
-                        hexCommand = Utilities.ConvertHexStringToByteArray(string.Concat(Utilities.CalculateHexLength(command).Select(b => b.ToString("D2"))));
-                    stream.Write(hexCommand, 0, hexCommand.Length);
-
-                    var stringCommand = Encoding.ASCII.GetBytes(command);
-                    stream.Write(stringCommand, 0, stringCommand.Length);
-
-                    if (!string.IsNullOrEmpty(tags))
+                    using (var stream = client.GetStream())
                     {
-                        var hexCommandLast = Utilities.ConvertHexStringToByteArray(tags);
-                        stream.Write(hexCommandLast, 0, hexCommandLast.Length);
-                    }
+                        byte[] hexCommand = null;
 
-                    var buffer = new byte[1024];
-                    using (var ms = new MemoryStream())
-                    {
-                        int bytesRead;
-                        while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-                            ms.Write(buffer, 0, bytesRead);
-                        message = Encoding.UTF8.GetString(ms.ToArray()).Substring(2);
-                        Console.WriteLine($"{_infoReceived}: {message}");
+                        if (string.IsNullOrEmpty(tags))
+                            hexCommand = Utilities.CalculateHexLength(command);
+                        else
+                            hexCommand = Utilities.ConvertHexStringToByteArray(string.Concat(Utilities.CalculateHexLength(command).Select(b => b.ToString("D2"))));
+                        stream.Write(hexCommand, 0, hexCommand.Length);
+
+                        var stringCommand = Encoding.ASCII.GetBytes(command);
+                        stream.Write(stringCommand, 0, stringCommand.Length);
+
+                        if (!string.IsNullOrEmpty(tags))
+                        {
+                            var hexCommandLast = Utilities.ConvertHexStringToByteArray(tags);
+                            stream.Write(hexCommandLast, 0, hexCommandLast.Length);
+                        }
+
+                        var buffer = new byte[1024];
+                        using (var ms = new MemoryStream())
+                        {
+                            int bytesRead;
+                            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                                ms.Write(buffer, 0, bytesRead);
+                            message = Encoding.UTF8.GetString(ms.ToArray()).Substring(2);
+                        }
+
+                        logger.Info("{InfoReceived}: {Message}", _infoReceived, message);
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "An error occurred while sending command: {Command}", command);
             }
 
             return message;
@@ -116,7 +131,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         public Result TerminalStatus()
         {
             var message = SendCommand(new TerminalStatus().ToString());
-            var success = message.Substring(9).StartsWith(_okTerminalStatus);
+            var success = !string.IsNullOrEmpty(message) && message.Substring(9).StartsWith(_okTerminalStatus);
             var originalPosIdentification = success ? message.Substring(26) : string.Empty;
 
             return new Result { Success = success, Message = message, ExtraData = originalPosIdentification };
@@ -137,55 +152,54 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 ReceiptWidth = receiptWidth
             }.ToString());
 
-            var success = message.Substring(6, 3).Equals(_okPurchase);
+            var success = !string.IsNullOrEmpty(message) && message.Substring(6, 3).Equals(_okPurchase);
 
             if (success)
             {
-                var receiptPosIdentification = string.Empty;
-                var receiptDataParsed = DateTime.Now;
-                PurchaseResultReceipt receiptData = null;
-
-                purchaseResult.TransactionId = transactionId;
-                //purchaseResult.Amount = amount;
-
-                if (!printReceiptOnPOS)
+                try
                 {
-                    // Match Ident. TPA for terminal ID, date, and time:
-                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
-                    if (!matchIdentTpa.Success)
-                        matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
-                    if (matchIdentTpa.Success)
+                    var receiptPosIdentification = string.Empty;
+                    var receiptDataParsed = DateTime.Now;
+                    PurchaseResultReceipt receiptData = null;
+
+                    purchaseResult.TransactionId = transactionId;
+                    //purchaseResult.Amount = amount;
+
+                    if (!printReceiptOnPOS)
                     {
-                        DateTime.TryParseExact(
-                            matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
-                            _dateTimeFormatOnECR,
-                            CultureInfo.InvariantCulture,
-                            DateTimeStyles.None,
-                            out receiptDataParsed
-                        );
-
-                        receiptPosIdentification = matchIdentTpa.Groups[1].Value;
-
-                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length >= 2)
+                        // Match Ident. TPA for terminal ID, date, and time:
+                        var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+                        if (!matchIdentTpa.Success)
+                            matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+                        if (matchIdentTpa.Success)
                         {
+                            DateTime.TryParseExact(
+                                matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                                _dateTimeFormatOnECR,
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.None,
+                                out receiptDataParsed
+                            );
+
+                            receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                            var merchantReceipt = message.Substring(29 + 2);
+
                             receiptData = Utilities.BreakStringIntoChunks(
-                                receiptStrings[1].Substring(1),
+                                merchantReceipt,
                                 string.Empty,
                                 (int)receiptWidth);
                         }
-                        else
-                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
-                }
 
-                purchaseResult.OriginalPosIdentification = receiptPosIdentification;
-                purchaseResult.OriginalReceiptData = receiptDataParsed;
-                purchaseResult.ReceiptData = receiptData;
+                    purchaseResult.OriginalPosIdentification = receiptPosIdentification;
+                    purchaseResult.OriginalReceiptData = receiptDataParsed;
+                    purchaseResult.ReceiptData = receiptData;
+                }
+                catch(Exception ex)
+                {
+                    logger.Error(ex, _infoErrorParsingMessage, message);
+                }
             }
 
             var result = new Result
@@ -214,58 +228,54 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 ReceiptWidth = receiptWidth
             }.ToString());
 
-            var success = message.Substring(6, 3).Equals(_okPurchase);
+            var success = !string.IsNullOrEmpty(message) && message.Substring(6, 3).Equals(_okPurchase);
 
             if (success)
             {
-                var receiptPosIdentification = string.Empty;
-                var receiptDataParsed = DateTime.Now;
-                PurchaseResultReceipt receiptData = null;
-
-                purchaseResult.TransactionId = transactionId;
-                //purchaseResult.Amount = amount;
-
-                if (!printReceiptOnPOS)
+                try
                 {
-                    // Match Ident. TPA for terminal ID, date, and time:
-                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
-                    if (!matchIdentTpa.Success)
-                        matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
-                    if (matchIdentTpa.Success)
+                    var receiptPosIdentification = string.Empty;
+                    var receiptDataParsed = DateTime.Now;
+                    PurchaseResultReceipt receiptData = null;
+
+                    purchaseResult.TransactionId = transactionId;
+                    //purchaseResult.Amount = amount;
+
+                    if (!printReceiptOnPOS)
                     {
-                        DateTime.TryParseExact(
-                            matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
-                            _dateTimeFormatOnECR,
-                            CultureInfo.InvariantCulture,
-                            DateTimeStyles.None,
-                            out receiptDataParsed
-                        );
-
-                        receiptPosIdentification = matchIdentTpa.Groups[1].Value;
-
-                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new[] { (char)0x02 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length >= 2)
+                        // Match Ident. TPA for terminal ID, date, and time:
+                        var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+                        if (!matchIdentTpa.Success)
+                            matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+                        if (matchIdentTpa.Success)
                         {
+                            DateTime.TryParseExact(
+                                matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                                _dateTimeFormatOnECR,
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.None,
+                                out receiptDataParsed
+                            );
+
+                            receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                            var merchantReceipt = message.Substring(29 + 2);
+
                             receiptData = Utilities.BreakStringIntoChunks(
-                                receiptStrings[1].Substring(1),
+                                merchantReceipt,
                                 string.Empty,
                                 (int)receiptWidth);
                         }
-                        else
-                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
-                }
 
-                purchaseResult.OriginalPosIdentification = receiptPosIdentification;
-                purchaseResult.OriginalReceiptData = receiptDataParsed;
-                purchaseResult.ReceiptData = receiptData;
+                    purchaseResult.OriginalPosIdentification = receiptPosIdentification;
+                    purchaseResult.OriginalReceiptData = receiptDataParsed;
+                    purchaseResult.ReceiptData = receiptData;
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, _infoErrorParsingMessage, message);
+                }
             }
 
             var result = new Result
@@ -298,57 +308,62 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 ReceiptWidth = receiptWidth
                 }.ToString(),
                 _purchaseTags);
-            var success = message.Substring(6, 3).Equals(_okPurchase);
+            var success = !string.IsNullOrEmpty(message) && message.Substring(6, 3).Equals(_okPurchase);
 
             if (success)
             {
-                var receiptPosIdentification = string.Empty;
-                var receiptDataParsed = DateTime.Now;
-                PurchaseResultReceipt receiptData = null;
-
-                purchaseResult.TransactionId = transactionId;
-                purchaseResult.Amount = amount;
-
-                if (!printReceiptOnPOS)
+                try
                 {
-                    // Match Ident. TPA for terminal ID, date, and time:
-                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
-                    if (!matchIdentTpa.Success)
-                        matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
-                    if (matchIdentTpa.Success)
+                    var receiptPosIdentification = string.Empty;
+                    var receiptDataParsed = DateTime.Now;
+                    PurchaseResultReceipt receiptData = null;
+
+                    purchaseResult.TransactionId = transactionId;
+                    purchaseResult.Amount = amount;
+
+                    if (!printReceiptOnPOS)
                     {
-                        DateTime.TryParseExact(
-                            matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
-                            _dateTimeFormatOnECR,
-                            CultureInfo.InvariantCulture,
-                            DateTimeStyles.None,
-                            out receiptDataParsed
-                        );
-
-                        receiptPosIdentification = matchIdentTpa.Groups[1].Value;
-
-                        var receiptStrings = message.Substring(31).Split(new[] { (char)0x01 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.Substring(31).Split(new[] { (char)0x00 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length >= 2)
+                        // Match Ident. TPA for terminal ID, date, and time:
+                        var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+                        if (!matchIdentTpa.Success)
+                            matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+                        if (matchIdentTpa.Success)
                         {
-                            var sibsIndex = receiptStrings[1].Substring(1).IndexOf(_sibsKeyword);
+                            DateTime.TryParseExact(
+                                matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                                _dateTimeFormatOnECR,
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.None,
+                                out receiptDataParsed
+                            );
 
-                            receiptData = Utilities.BreakStringIntoChunks(
-                                receiptStrings[0].Substring(1),
-                                sibsIndex != -1 ? receiptStrings[1].Substring(1).Substring(0, sibsIndex + _sibsKeyword.Length) : receiptStrings[1].Substring(1),
-                                (int)receiptWidth);
+                            receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                            var receiptStrings = message.Substring(31).Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                            if (receiptStrings.Length == 1)
+                                receiptStrings = message.Substring(31).Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                            if (receiptStrings.Length >= 2)
+                            {
+                                receiptData = Utilities.BreakStringIntoChunks(
+                                    receiptStrings[0].Substring(1),
+                                    receiptStrings[1].Substring(1),
+                                    (int)receiptWidth);
+                            }
+                            else
+                                receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                         }
-                        else
-                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
-                }
 
-                purchaseResult.OriginalPosIdentification = receiptPosIdentification;
-                purchaseResult.OriginalReceiptData = receiptDataParsed;
-                purchaseResult.ReceiptData = receiptData;
+                    purchaseResult.OriginalPosIdentification = receiptPosIdentification;
+                    purchaseResult.OriginalReceiptData = receiptDataParsed;
+                    purchaseResult.ReceiptData = receiptData;
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, _infoErrorParsingMessage, message);
+                }
             }
 
             var result = new Result
@@ -380,56 +395,61 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 OriginalReceiptTime = purchaseResult.OriginalReceiptData,
                 PrintReceiptOnPOS = printReceiptOnPOS
             }.ToString());
-            var success = message.Substring(6, 3).Equals(_okPurchase);
+            var success = !string.IsNullOrEmpty(message) && message.Substring(6, 3).Equals(_okPurchase);
 
             if (success)
             {
-                var receiptPosIdentification = string.Empty;
-                var receiptDataParsed = DateTime.Now;
-                PurchaseResultReceipt receiptData = null;
-
-                //purchaseResult.TransactionId = transactionId;
-                //purchaseResult.Amount = amount;
-
-                if (!printReceiptOnPOS)
+                try
                 {
-                    // Match Ident. TPA for terminal ID, date, and time:
-                    var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
-                    if (!matchIdentTpa.Success)
-                        matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
-                    if (matchIdentTpa.Success)
+                    var receiptPosIdentification = string.Empty;
+                    var receiptDataParsed = DateTime.Now;
+                    PurchaseResultReceipt receiptData = null;
+
+                    //purchaseResult.TransactionId = transactionId;
+                    //purchaseResult.Amount = amount;
+
+                    if (!printReceiptOnPOS)
                     {
-                        DateTime.TryParseExact(
-                            matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
-                            _dateTimeFormatOnECR,
-                            CultureInfo.InvariantCulture,
-                            DateTimeStyles.None,
-                            out receiptDataParsed
-                        );
-
-                        receiptPosIdentification = matchIdentTpa.Groups[1].Value;
-
-                        var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length == 1)
-                            receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
-
-                        if (receiptStrings.Length >= 2)
+                        // Match Ident. TPA for terminal ID, date, and time:
+                        var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+                        if (!matchIdentTpa.Success)
+                            matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+                        if (matchIdentTpa.Success)
                         {
-                            var sibsIndex = receiptStrings[2].Substring(1).IndexOf(_sibsKeyword);
+                            DateTime.TryParseExact(
+                                matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                                _dateTimeFormatOnECR,
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.None,
+                                out receiptDataParsed
+                            );
 
-                            receiptData = Utilities.BreakStringIntoChunks(
-                                receiptStrings[1].Substring(1),
-                                sibsIndex != -1 ? receiptStrings[2].Substring(1).Substring(0, sibsIndex + _sibsKeyword.Length) : receiptStrings[2].Substring(1));
+                            receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                            var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                            if (receiptStrings.Length == 1)
+                                receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                            if (receiptStrings.Length >= 2)
+                            {
+                                receiptData = Utilities.BreakStringIntoChunks(
+                                    receiptStrings[1].Substring(1),
+                                    receiptStrings[2].Substring(1));
+                            }
+                            else
+                                receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                         }
-                        else
-                            receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
                     }
-                }
 
-                purchaseResult.OriginalPosIdentification = receiptPosIdentification;
-                purchaseResult.OriginalReceiptData = receiptDataParsed;
-                purchaseResult.ReceiptData = receiptData;
+                    purchaseResult.OriginalPosIdentification = receiptPosIdentification;
+                    purchaseResult.OriginalReceiptData = receiptDataParsed;
+                    purchaseResult.ReceiptData = receiptData;
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, _infoErrorParsingMessage, message);
+                }
             }
 
             var result = new Result
