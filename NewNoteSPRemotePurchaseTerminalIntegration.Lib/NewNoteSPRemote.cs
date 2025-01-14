@@ -346,10 +346,14 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                             if (receiptStrings.Length >= 2)
                             {
+                                var clientReceipt = receiptStrings[1].Substring(1);
+                                var clientReceiptSplitted = clientReceipt.Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
                                 receiptData = Utilities.BreakStringIntoChunks(
                                     receiptStrings[0].Substring(1),
-                                    receiptStrings[1].Substring(1),
-                                    (int)receiptWidth);
+                                    clientReceiptSplitted.Length == 2 ? clientReceiptSplitted[0] : clientReceipt,
+                                    (int)receiptWidth
+                                );
                             }
                             else
                                 receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
@@ -433,9 +437,13 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                             if (receiptStrings.Length >= 2)
                             {
+                                var clientReceipt = receiptStrings[1].Substring(1);
+                                var clientReceiptSplitted = clientReceipt.Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
                                 receiptData = Utilities.BreakStringIntoChunks(
-                                    receiptStrings[1].Substring(1),
-                                    receiptStrings[2].Substring(1));
+                                    receiptStrings[0].Substring(1),
+                                    clientReceiptSplitted.Length == 2 ? clientReceiptSplitted[0] : clientReceipt
+                                );
                             }
                             else
                                 receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
