@@ -441,7 +441,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                                 var clientReceiptSplitted = clientReceipt.Split(new[] { (char)0x00 }, StringSplitOptions.None);
 
                                 receiptData = Utilities.BreakStringIntoChunks(
-                                    receiptStrings[0].Substring(1),
+                                    receiptStrings[0],
                                     clientReceiptSplitted.Length >= 2 ? clientReceiptSplitted[0] : clientReceipt
                                 );
                             }
