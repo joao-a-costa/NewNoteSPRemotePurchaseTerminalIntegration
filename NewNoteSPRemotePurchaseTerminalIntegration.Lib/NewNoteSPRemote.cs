@@ -430,10 +430,10 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                             receiptPosIdentification = matchIdentTpa.Groups[1].Value;
 
-                            var receiptStrings = message.ToString().Split(new[] { (char)0x01 }, StringSplitOptions.None);
+                            var receiptStrings = message.Substring(31).Split(new[] { (char)0x01 }, StringSplitOptions.None);
 
                             if (receiptStrings.Length == 1)
-                                receiptStrings = message.ToString().Split(new[] { (char)0x00 }, StringSplitOptions.None);
+                                receiptStrings = message.Substring(31).Split(new[] { (char)0x00 }, StringSplitOptions.None);
 
                             if (receiptStrings.Length >= 2)
                             {
@@ -442,7 +442,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                                 receiptData = Utilities.BreakStringIntoChunks(
                                     receiptStrings[0].Substring(1),
-                                    clientReceiptSplitted.Length == 2 ? clientReceiptSplitted[0] : clientReceipt
+                                    clientReceiptSplitted.Length >= 2 ? clientReceiptSplitted[0] : clientReceipt
                                 );
                             }
                             else
