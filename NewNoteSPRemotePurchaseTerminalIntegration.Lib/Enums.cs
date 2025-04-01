@@ -53,6 +53,10 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             MODELOECRINV = 008,
             [Description("ERRO")]
             ERRO = 012,
+            [Description("JÁ ESTÁ ABERTO")]
+            JAESTAABERTO = 014,
+            [Description("JÁ ESTÁ FECHADO")]
+            JAESTAFECHADO = 015,
         }
 
         public enum ReceiptWidth
