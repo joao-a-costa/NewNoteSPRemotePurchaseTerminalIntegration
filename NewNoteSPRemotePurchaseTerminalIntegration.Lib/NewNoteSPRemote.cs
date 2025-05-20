@@ -16,7 +16,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
         #region "Constants"
 
         private const string _infoReceived = "Received";
-        private const string _infoUnknownError = "Erro no processamento. Consulte o terminal para mais detalhes";
+        private const string _infoUnknownError = "Erro no processamento. Consulte o terminal para mais detalhes. Message: #MESSAGE#";
 
         private const string _okTerminalStatus = "INIT OK";
         private const string _okPurchase = "000";
@@ -499,11 +499,11 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                 }
                 else
                 {
-                    return _infoUnknownError;
+                    return _infoUnknownError.Replace($"#MESSAGE#", message);
                 }
             }
 
-            return _infoUnknownError;
+            return _infoUnknownError.Replace($"#MESSAGE#", message);
         }
 
     }
