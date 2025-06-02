@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Sockets;
 using NewNoteSPRemotePurchaseTerminalIntegration.Lib;
+using NewNoteSPRemotePurchaseTerminalIntegration.Lib.Models;
 using static NewNoteSPRemotePurchaseTerminalIntegration.Lib.Enums;
 
 namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
@@ -78,6 +79,9 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
                         case TerminalCommandOptions.SendProcessRefundRequest:
                             newNoteSPRemote.Refund(new Lib.Models.PurchaseResult());
                             break;
+                        case TerminalCommandOptions.ParsePurchaseResponse:
+                            ParsePurchaseResponse();
+                            break;
                         case TerminalCommandOptions.ShowListOfCommands:
                             ShowListOfCommands();
                             break;
@@ -92,6 +96,19 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Console
                     ShowListOfCommands();
                 }
             }
+        }
+
+        private static void ParsePurchaseResponse()
+        {
+            var receiptPosIdentification = string.Empty;
+            DateTime receiptDataParsed = DateTime.MinValue;
+            PurchaseResultReceipt receiptData = null;
+
+            System.Console.WriteLine("Insert a valid message...");
+
+            var input = System.Console.ReadLine()?.ToLower();
+
+            NewNoteSPRemote.ParsePurchaseResponse(ReceiptWidth.TWENTYCOLUMNS, input, ref receiptPosIdentification, ref receiptDataParsed, ref receiptData);
         }
 
         /// <summary>

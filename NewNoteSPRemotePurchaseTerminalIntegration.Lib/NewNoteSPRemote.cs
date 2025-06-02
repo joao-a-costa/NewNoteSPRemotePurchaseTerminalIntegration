@@ -27,7 +27,6 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
         private const string _purchaseTags = "0B9F1C009A009F21009F4100";
 
-        private const string _sibsKeyword = "SIBS";
         private const string _infoErrorParsingMessage = "An error occurred while parsing the response: {Message}";
 
         #endregion
@@ -322,43 +321,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
                     purchaseResult.Amount = amount;
 
                     if (!printReceiptOnPOS)
-                    {
-                        // Match Ident. TPA for terminal ID, date, and time:
-                        var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
-                        if (!matchIdentTpa.Success)
-                            matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
-                        if (matchIdentTpa.Success)
-                        {
-                            DateTime.TryParseExact(
-                                matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
-                                _dateTimeFormatOnECR,
-                                CultureInfo.InvariantCulture,
-                                DateTimeStyles.None,
-                                out receiptDataParsed
-                            );
-
-                            receiptPosIdentification = matchIdentTpa.Groups[1].Value;
-
-                            var receiptStrings = message.Substring(31).Split(new[] { (char)0x01 }, StringSplitOptions.None);
-
-                            if (receiptStrings.Length == 1)
-                                receiptStrings = message.Substring(31).Split(new[] { (char)0x00 }, StringSplitOptions.None);
-
-                            if (receiptStrings.Length >= 2)
-                            {
-                                var clientReceipt = receiptStrings[1].Substring(1);
-                                var clientReceiptSplitted = clientReceipt.Split(new[] { (char)0x00 }, StringSplitOptions.None);
-
-                                receiptData = Utilities.BreakStringIntoChunks(
-                                    receiptStrings[0].Substring(1),
-                                    clientReceiptSplitted.Length == 2 ? clientReceiptSplitted[0] : clientReceipt,
-                                    (int)receiptWidth
-                                );
-                            }
-                            else
-                                receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
-                        }
-                    }
+                        ParsePurchaseResponse(receiptWidth, message, ref receiptPosIdentification, ref receiptDataParsed, ref receiptData);
 
                     purchaseResult.OriginalPosIdentification = receiptPosIdentification;
                     purchaseResult.OriginalReceiptData = receiptDataParsed;
@@ -414,40 +377,7 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
 
                     if (!printReceiptOnPOS)
                     {
-                        // Match Ident. TPA for terminal ID, date, and time:
-                        var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
-                        if (!matchIdentTpa.Success)
-                            matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
-                        if (matchIdentTpa.Success)
-                        {
-                            DateTime.TryParseExact(
-                                matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
-                                _dateTimeFormatOnECR,
-                                CultureInfo.InvariantCulture,
-                                DateTimeStyles.None,
-                                out receiptDataParsed
-                            );
-
-                            receiptPosIdentification = matchIdentTpa.Groups[1].Value;
-
-                            var receiptStrings = message.Substring(31).Split(new[] { (char)0x01 }, StringSplitOptions.None);
-
-                            if (receiptStrings.Length == 1)
-                                receiptStrings = message.Substring(31).Split(new[] { (char)0x00 }, StringSplitOptions.None);
-
-                            if (receiptStrings.Length >= 2)
-                            {
-                                var clientReceipt = receiptStrings[1].Substring(1);
-                                var clientReceiptSplitted = clientReceipt.Split(new[] { (char)0x00 }, StringSplitOptions.None);
-
-                                receiptData = Utilities.BreakStringIntoChunks(
-                                    receiptStrings[0],
-                                    clientReceiptSplitted.Length >= 2 ? clientReceiptSplitted[0] : clientReceipt
-                                );
-                            }
-                            else
-                                receiptData = Utilities.ReceiptDataFormat(message.Substring(32));
-                        }
+                        ParseRefundMessage(message, ref receiptPosIdentification, ref receiptDataParsed, ref receiptData);
                     }
 
                     purchaseResult.OriginalPosIdentification = receiptPosIdentification;
@@ -472,6 +402,100 @@ namespace NewNoteSPRemotePurchaseTerminalIntegration.Lib
             result.MessageDescription = messageDescription;
 
             return result;
+        }
+
+        /// <summary>
+        /// Parses the purchase response from the terminal.
+        /// </summary>
+        /// <param name="receiptWidth">The width of the receipt.</param>
+        /// <param name="message">The message received from the terminal.</param>
+        /// <param name="receiptPosIdentification">The receipt position identification.</param>
+        /// <param name="receiptDataParsed">The date and time when the receipt data was parsed.</param>
+        /// <param name="receiptData">The parsed receipt data.</param>
+        public static void ParsePurchaseResponse(ReceiptWidth receiptWidth, string message, ref string receiptPosIdentification, ref DateTime receiptDataParsed, ref PurchaseResultReceipt receiptData)
+        {
+            // Match Ident. TPA for terminal ID, date, and time:
+            var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+            if (!matchIdentTpa.Success)
+                matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+            if (matchIdentTpa.Success)
+            {
+                DateTime.TryParseExact(
+                    matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                    _dateTimeFormatOnECR,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out receiptDataParsed
+                );
+
+                receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                var clientReceipt = string.Empty;
+                string[] clientReceiptSplitted = null;
+
+                var receiptStrings = message.Substring(31).Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                if (receiptStrings.Length == 1)
+                    receiptStrings = message.Substring(31).Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                if (receiptStrings.Length >= 2)
+                {
+                    clientReceipt = receiptStrings[1].Substring(1);
+                    clientReceiptSplitted = clientReceipt.Split(new[] { (char)0x00 }, StringSplitOptions.None);
+                }
+
+                receiptData = Utilities.BreakStringIntoChunks(
+                    receiptStrings[0].Substring(1),
+                    clientReceiptSplitted?.Length == 2 ? clientReceiptSplitted[0] : clientReceipt,
+                    (int)receiptWidth
+                );
+            }
+        }
+
+        /// <summary>
+        /// Parses the refund message from the terminal.
+        /// </summary>
+        /// <param name="message">The message received from the terminal.</param>
+        /// <param name="receiptPosIdentification">The receipt position identification.</param>
+        /// <param name="receiptDataParsed">The date and time when the receipt data was parsed.</param>
+        /// <param name="receiptData">The parsed receipt data.</param>
+        private static void ParseRefundMessage(string message, ref string receiptPosIdentification, ref DateTime receiptDataParsed, ref PurchaseResultReceipt receiptData)
+        {
+            // Match Ident. TPA for terminal ID, date, and time:
+            var matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate1);
+            if (!matchIdentTpa.Success)
+                matchIdentTpa = Regex.Match(message, _patternReceiptOnECRTerminalIDAndDate2);
+            if (matchIdentTpa.Success)
+            {
+                DateTime.TryParseExact(
+                    matchIdentTpa.Groups[2].Value + " " + matchIdentTpa.Groups[3].Value,
+                    _dateTimeFormatOnECR,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out receiptDataParsed
+                );
+
+                receiptPosIdentification = matchIdentTpa.Groups[1].Value;
+
+                var clientReceipt = string.Empty;
+                string[] clientReceiptSplitted = null;
+
+                var receiptStrings = message.Substring(31).Split(new[] { (char)0x01 }, StringSplitOptions.None);
+
+                if (receiptStrings.Length == 1)
+                    receiptStrings = message.Substring(31).Split(new[] { (char)0x00 }, StringSplitOptions.None);
+
+                if (receiptStrings.Length >= 2)
+                {
+                    clientReceipt = receiptStrings[1].Substring(1);
+                    clientReceiptSplitted = clientReceipt.Split(new[] { (char)0x00 }, StringSplitOptions.None);
+                }
+
+                receiptData = Utilities.BreakStringIntoChunks(
+                    receiptStrings[0],
+                    clientReceiptSplitted.Length >= 2 ? clientReceiptSplitted[0] : clientReceipt
+                );
+            }
         }
 
         /// <summary>
